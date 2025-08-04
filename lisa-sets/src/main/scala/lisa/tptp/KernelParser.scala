@@ -132,6 +132,7 @@ object KernelParser {
   private def problemToKernel(problemFile: File, md: ProblemMetadata)(using maps: ((String, Int) => K.Expression, (String, Int) => K.Expression, String => K.Variable)): Problem = {
     val (mapAtom, mapTerm, mapVariable) = maps
     val file = io.Source.fromFile(problemFile)
+    val folder = problemFile.getParentFile
     val pattern = "SPC\\s*:\\s*[A-z]{3}(_[A-z]{3})*".r
     val g = file.getLines()
     given emptyctx: DefContext = _ => None
@@ -139,7 +140,22 @@ object KernelParser {
     def search(): String = pattern.findFirstIn(g.next()).getOrElse(search())
 
     val i = Parser.problem(file)
-    val sq = i.formulas map {
+    def problemToFormulas(i: TPTP.Problem): Seq[TPTP.AnnotatedFormula] = {
+      val file = io.Source.fromFile(problemFile)
+      i.formulas ++ i.includes.flatMap(i => {
+        val probFile = new File(folder, i._1)
+        val file = if (!probFile.exists) then
+          val tptpEnv = sys.env.getOrElse("TPTP", "")
+          if (tptpEnv.isEmpty) throw new Exception("TPTP environment variable not set, and file " + i._1 + " does not exist.")
+          val probFile = new File(tptpEnv, i._1)
+          if (!probFile.exists) throw new Exception("File " + i._1 + " does not exist in TPTP environment variable " + tptpEnv + " nor in " + folder.getPath)
+          io.Source.fromFile(probFile)
+          else io.Source.fromFile(probFile)
+        problemToFormulas(Parser.problem(file))
+      })
+    }
+    val iformulas = problemToFormulas(i)
+    val sq = iformulas map {
       case TPTP.FOFAnnotated(name, role, formula, annotations, origin) =>
         formula match {
           case FOF.Logical(formula) => AnnotatedFormula(role, name, convertToKernel(formula), annotations)
@@ -148,9 +164,14 @@ object KernelParser {
         }
       case TPTP.CNFAnnotated(name, role, formula, annotations, origin) =>
         formula match {
-          case CNF.Logical(formula) => AnnotatedFormula(role, name, convertToKernel(formula), annotations)
+          case CNF.Logical(formula) => 
+            val inner = convertToKernel(formula)
+            val closure = inner.freeVariables.foldLeft(inner)((acc, v) => K.forall(v, acc))
+            AnnotatedFormula(role, name, closure, annotations)
         }
-      case _ => throw FileNotAcceptedException("Only FOF formulas are supported", problemFile.getPath)
+      case _ => 
+        println("Unknown statement:" + i.pretty)
+        throw FileNotAcceptedException("Only FOF formulas are supported", problemFile.getPath)
     }
     Problem(md.file, md.domain, md.problem, md.status, md.spc, sq)
   }
@@ -171,6 +192,8 @@ object KernelParser {
     problemToKernel(File(problemFile))
   }
 
+
+  val axiomLikeRoles = Set("axiom", "hypothesis", "definition", "assumption", "lemma", "theorem", "corollary", "negated_conjecture")
   /**
    * Given a problem consisting of many axioms and a single conjecture, create a sequent with axioms on the left
    * and conjecture on the right.
@@ -182,7 +205,7 @@ object KernelParser {
     if (problem.spc.contains("CNF")) problem.formulas.map(_.asInstanceOf[AnnotatedFormula].formula) |- ()
     else
       problem.formulas.foldLeft[K.Sequent](() |- ())((s, f) =>
-        if (f.role == "axiom") s +<< f.asInstanceOf[AnnotatedFormula].formula
+        if (axiomLikeRoles.contains(f.role)) s +<< f.asInstanceOf[AnnotatedFormula].formula
         else if (f.role == "conjecture" && s.right.isEmpty) s +>> f.asInstanceOf[AnnotatedFormula].formula
         else throw Exception("Can only agglomerate axioms and one conjecture into a sequents")
       )
@@ -192,8 +215,18 @@ object KernelParser {
     val pieces = s.split("_")
     val lead = pieces.init
     val last = pieces.last
-    if last.nonEmpty && last.forall(_.isDigit) && last.head != '0' then lead.mkString("$u") + "_" + last
-    else pieces.mkString("$u")
+    (if last.nonEmpty && last.forall(_.isDigit) && last.head != '0' then lead.mkString("$u") + "_" + last
+    else 
+      pieces
+        .mkString("$u"))
+        .replaceAllLiterally(" ", "$s")
+
+  def unsanitize(s: String, no:Int): String =
+    val r1 = s.replaceAllLiterally("$u", "_").replaceAllLiterally("$s", " ")
+    //if r1.contains(" ") then s"'$r1'" else r1
+    r1
+  def unsanitize(id:K.Identifier): String = 
+    unsanitize(id.name, id.no)
 
   val strictMapAtom: ((String, Int) => K.Expression) = (f, n) =>
     val kind = f.head
@@ -206,6 +239,7 @@ object KernelParser {
     if f(0).isUpper then K.Variable(sanitize(f), K.functionType(n))
     else K.Constant(sanitize(f), K.functionType(n))
   val strictMapVariable: (String => K.Variable) = f => K.Variable(sanitize(f), K.Ind)
+  
 
   /**
    * Given a folder containing folders containing problem (typical organisation of TPTP library) and a list of spc,
