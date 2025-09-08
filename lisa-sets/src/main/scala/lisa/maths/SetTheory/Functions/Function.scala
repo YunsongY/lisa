@@ -1,33 +1,31 @@
 package lisa.maths.SetTheory.Functions
 
 import lisa.maths.SetTheory.Base.Predef.{*, given}
-import lisa.maths.SetTheory.Relations
+import lisa.maths.SetTheory.Relations.Relation
 import lisa.maths.SetTheory.Relations.Predef.*
 
 import lisa.maths.Quantifiers.∃!
+
+import scala.annotation.targetName
 
 /**
  * A function `f : A -> B` is a relation `f ⊆ A × B` such that for any
  * `x ∈ A` there is a unique `y ∈ B` such that `(x, y) ∈ f`.
  */
-object Definitions extends lisa.Main {
-
-  private val x, y = variable[Ind]
-  private val f, g = variable[Ind]
-  private val A, B = variable[Ind]
+object Function extends lisa.Main {
 
   /**
    * Definition --- `f : A -> B` is a function between `A` and `B` if `f ⊆ A × B`
    * such that for all `x ∈ A` there is a unique `y ∈ B` such that `(x, y) ∈ f`.
    */
-  val functionBetween = DEF(λ(f, λ(A, λ(B, relationBetween(f)(A)(B) /\ ∀(x, x ∈ A ==> ∃!(y, (x, y) ∈ f))))))
+  val functionBetween = DEF(λ(f, λ(A, λ(B, relationBetween(f)(A)(B) /\ ∀(x ∈ A, ∃!(y, (x, y) ∈ f))))))
 
-  extension (f: set) {
+  extension (f: Expr[Set]) {
 
     /**
      * Notation `f :: A -> B`
      */
-    infix def ::(fType: (set, set)): Expr[Prop] =
+    infix def ::(fType: (Expr[Set], Expr[Set])): Expr[Prop] =
       val (a, b) = fType
       functionBetween(f)(a)(b)
   }
@@ -45,16 +43,17 @@ object Definitions extends lisa.Main {
   /**
    * Function domain --- The domain of `f` is the set of elements that have a mapped value.
    *
-   * @see [[Relations.Definitions.dom]]
+   * @see [[Relation.dom]]
    */
-  val dom = Relations.Predef.dom
+  export Relation.dom
 
   /**
-   * Function range --- The range of `f` is the set of elements that are mapped by one value.
+   * Function range --- The range of `f` is the set of elements that are mapped
+   * by (at least) one value.
    *
-   * @see [[Relations.Definitions.dom]]
+   * @see [[Relation.dom]]
    */
-  val range = Relations.Predef.range
+  export Relation.range
 
   /**
    * Function application --- For any `x`, we denote by `f(x)` the application
@@ -62,32 +61,33 @@ object Definitions extends lisa.Main {
    *
    * If `x ∉ A`, this value is undefined.
    */
-  val app = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
+  val app = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f)))).printAs(args => {
+    val f = args(0)
+    val x = args(1)
+    s"$f($x)"
+  })
 
-  extension (f: set) {
-
-    /**
-     * Syntax for `f(x)`.
-     */
-    def apply(x: set): set = app(f)(x)
+  extension (f: Expr[Set]) {
+    /** Syntax for `f(x)`. */
+    def apply(x: Expr[Set]): Expr[Set] = app(f)(x)
   }
 
   /**
-   * Injective function --- `f : A -> B` is said to be injective on `A` if `f(x) = f(y)` implies `x = y`.
+   * Injective function --- `f` is said to be injective on `A` if `f(x) = f(y)` implies `x = y`.
    */
-  val injective = DEF(λ(f, λ(A, λ(B, ∀(x, ∀(y, (x ∈ A) /\ (y ∈ A) /\ (f(x) === f(y)) ==> (x === y)))))))
-  val oneToOne = injective
+  val injective = DEF(λ(f, λ(A, ∀(x ∈ A, ∀(y ∈ A, (f(x) === f(y)) ==> (x === y))))))
+  inline def oneToOne = injective
 
   /**
-   * Surjective function --- `f : A -> B` is said to be surjective (or onto) if `range(f) = B`.
+   * Surjective function --- `f` is said to be surjective on (or onto) `B` if `range(f) = B`.
    */
-  val surjective = DEF(λ(f, λ(A, λ(B, (f :: A -> B) /\ (range(f) === B)))))
-  val onto = surjective
+  val surjective = DEF(λ(f, λ(B, range(f) === B)))
+  inline def onto = surjective
 
   /**
    * Bijective function --- `f : A -> B` is said to be bijective if is both injective
    * and surjective.
    */
-  val bijective = DEF(λ(f, λ(A, λ(B, injective(f)(A)(B) /\ surjective(f)(A)(B)))))
+  val bijective = DEF(λ(f, λ(A, λ(B, (f :: A -> B) /\ injective(f)(A) /\ surjective(f)(B)))))
 
 }

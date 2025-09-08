@@ -10,15 +10,15 @@ import lisa.maths.SetTheory.Relations.Predef.*
  */
 object UniversalRelation extends lisa.Main {
 
-  private val x, y = variable[Ind]
+  private val x, y, z = variable[Ind]
   private val a, b = variable[Ind]
-  private val R = variable[Ind]
+  private val R, ~ = variable[Ind]
   private val A, B, X = variable[Ind]
 
   /**
    * Theorem --- The [[CartesianProduct]] `X × X` is the universal relation on `X`.
    */
-  val universalRelation = Theorem(
+  val isRelation = Theorem(
     relationOn(X × X)(X)
   ) {
     have(thesis) by Tautology.from(
@@ -54,29 +54,39 @@ object UniversalRelation extends lisa.Main {
     have(x ∈ X ==> (x, x) ∈ (X × X)) by Tautology.from(
       CartesianProduct.pairMembership of (x := x, y := x, A := X, B := X)
     )
-    thenHave(∀(x, x ∈ X ==> (x, x) ∈ (X × X))) by RightForall
-    thenHave(thesis) by Tautology.fromLastStep(
-      reflexive.definition of (R := X × X),
-      universalRelation
-    )
+    thenHave(∀(x ∈ X, (x, x) ∈ (X × X))) by RightForall
+    thenHave(thesis) by Substitute(reflexive.definition of (R := X × X))
   }
 
   /**
    * Theorem --- The universal relation `A × A` is symmetric.
    */
   val universalRelationSymmetric = Theorem(
-    symmetric(X × X)
+    symmetric(X × X)(X)
   ) {
-    sorry
+    have((x ∈ X) /\ (y ∈ X) ==> ((x, y) ∈ (X × X) <=> (y, x) ∈ (X × X))) by Tautology.from(
+      CartesianProduct.pairMembership of (x := x, y := y, A := X, B := X),
+      CartesianProduct.pairMembership of (x := y, y := x, A := X, B := X),
+    )
+    thenHave(∀(x, ∀(y, (x ∈ X) /\ (y ∈ X) ==> ((x, y) ∈ (X × X) <=> (y, x) ∈ (X × X))))) by Generalize
+    thenHave(∀(x ∈ X, ∀(y ∈ X, (x, y) ∈ (X × X) <=> (y, x) ∈ (X × X)))) by Tableau
+    thenHave(thesis) by Substitute(symmetric.definition of (R := X × X))
   }
 
   /**
    * Theorem --- The universal relation `A × A` is transitive.
    */
   val universalRelationTransitive = Theorem(
-    transitive(X × X)
+    transitive(X × X)(X)
   ) {
-    sorry
+    have((x ∈ X) /\ (y ∈ X) /\ (z ∈ X) /\ (x, y) ∈ (X × X) /\ (y, z) ∈ (X × X) ==> (x, z) ∈ (X × X)) by Tautology.from(
+      CartesianProduct.pairMembership of (x := x, y := y, A := X, B := X),
+      CartesianProduct.pairMembership of (x := y, y := z, A := X, B := X),
+      CartesianProduct.pairMembership of (x := x, y := z, A := X, B := X),
+    )
+    thenHave(∀(x, ∀(y, ∀(z, (x ∈ X) /\ (y ∈ X) /\ (z ∈ X) /\ (x, y) ∈ (X × X) /\ (y, z) ∈ (X × X) ==> (x, z) ∈ (X × X))))) by Generalize
+    thenHave(∀(x ∈ X, ∀(y ∈ X, ∀(z ∈ X, (x, y) ∈ (X × X) /\ (y, z) ∈ (X × X) ==> (x, z) ∈ (X × X))))) by Tableau
+    thenHave(thesis) by Substitute(transitive.definition of (R := X × X))
   }
 
   /**
@@ -86,7 +96,8 @@ object UniversalRelation extends lisa.Main {
     equivalence(X × X)(X)
   ) {
     have(thesis) by Tautology.from(
-      equivalence.definition of (R := X × X),
+      equivalence.definition of (`~` := X × X, A := X),
+      isRelation,
       universalRelationReflexive,
       universalRelationSymmetric,
       universalRelationTransitive
@@ -99,7 +110,12 @@ object UniversalRelation extends lisa.Main {
   val universalRelationTotal = Theorem(
     total(X × X)(X)
   ) {
-    sorry
+    have((x ∈ X) /\ (y ∈ X) ==> (x, y) ∈ (X × X) \/ ((y, x) ∈ (X × X)) \/ (x === y)) by Tautology.from(
+      CartesianProduct.pairMembership of (A := X, B := X)
+    )
+    thenHave(∀(x, ∀(y, (x ∈ X) /\ (y ∈ X) ==> (x, y) ∈ (X × X) \/ ((y, x) ∈ (X × X)) \/ (x === y)))) by Generalize
+    thenHave(∀(x ∈ X, ∀(y ∈ X, (x, y) ∈ (X × X) \/ ((y, x) ∈ (X × X)) \/ (x === y)))) by Tableau
+    thenHave(thesis) by Substitute(total.definition of (R := X × X))
   }
 
   /**
@@ -108,6 +124,11 @@ object UniversalRelation extends lisa.Main {
   val universalRelationStronglyConnected = Theorem(
     stronglyConnected(X × X)(X)
   ) {
-    sorry
+    have((x ∈ X) /\ (y ∈ X) ==> (x, y) ∈ (X × X) \/ ((y, x) ∈ (X × X))) by Tautology.from(
+      CartesianProduct.pairMembership of (A := X, B := X)
+    )
+    thenHave(∀(x, ∀(y, (x ∈ X) /\ (y ∈ X) ==> (x, y) ∈ (X × X) \/ ((y, x) ∈ (X × X))))) by Generalize
+    thenHave(∀(x ∈ X, ∀(y ∈ X, (x, y) ∈ (X × X) \/ ((y, x) ∈ (X × X))))) by Tableau
+    thenHave(thesis) by Substitute(stronglyConnected.definition of (R := X × X))
   }
 }

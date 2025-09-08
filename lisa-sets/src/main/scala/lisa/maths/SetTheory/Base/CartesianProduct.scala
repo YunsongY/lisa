@@ -2,7 +2,8 @@ package lisa.maths.SetTheory.Base
 
 import Replacement.|
 import Union.∪
-import Pair.{pair, given}
+import Pair.{*, given}
+import Symbols.*
 
 /**
  * The Cartesian product of two sets `A` and `B` is the set `A × B` containing
@@ -10,11 +11,7 @@ import Pair.{pair, given}
  */
 object CartesianProduct extends lisa.Main {
 
-  private val x, y, z = variable[Ind]
-  private val a, b, c, d = variable[Ind]
-  private val A, B, C, D = variable[Ind]
   private val S = variable[Ind]
-  private val f = variable[Ind >>: Ind]
 
   /**
    * Cartesian Product --- Given two sets `A` and `B`, their Cartesian product
@@ -43,8 +40,8 @@ object CartesianProduct extends lisa.Main {
   ).printInfix()
   val cartesianProduct = ×
 
-  extension (x: set) {
-    inline infix def ×(y: set): set = cartesianProduct(x)(y)
+  extension (x: Expr[Set]) {
+    inline infix def ×(y: Expr[Set]): Expr[Set] = cartesianProduct(x)(y)
   }
 
   /**
@@ -65,7 +62,7 @@ object CartesianProduct extends lisa.Main {
 
     have((b ∈ B, `A × {b}` === y, z ∈ y) |- z ∈ `A × {b}`) by Congruence
     val secondReplacement = thenHave((b ∈ B, `A × {b}` === y, z ∈ y) |- ∃(a, a ∈ A /\ ((a, b) === z))) by Tautology.fromLastStep(
-      Replacement.membership of (S := A, y := z, f := λ(a, (a, b)))
+      Replacement.membership of (S := A, y := z, F := λ(a, (a, b)))
     )
 
     have((b ∈ B, a ∈ A, (a, b) === z) |- (a ∈ A) /\ (b ∈ B) /\ ((a, b) === z)) by Restate
@@ -106,13 +103,13 @@ object CartesianProduct extends lisa.Main {
     have(x ∈ A /\ ((x, y) === (x, y))) by Tautology
     thenHave(∃(a, a ∈ A /\ ((a, y) === (x, y)))) by RightExists
     val firstReplacement = thenHave((x, y) ∈ `A × {y}`) by Tautology.fromLastStep(
-      Replacement.membership of (S := A, y := (x, y), f := λ(x, (x, y)))
+      Replacement.membership of (A := A, y := (x, y), F := λ(x, (x, y)))
     )
 
     thenHave(y ∈ B /\ (`A × {y}` === `A × {y}`)) by Tautology
     thenHave(∃(b, b ∈ B /\ ({ (x, b) | x ∈ A } === `A × {y}`))) by RightExists
     val secondReplacement = thenHave(`A × {y}` ∈ { `A × {y}` | y ∈ B }) by Tautology.fromLastStep(
-      Replacement.membership of (S := B, f := λ(y, `A × {y}`), y := `A × {y}`)
+      Replacement.membership of (A := B, F := λ(y, `A × {y}`), y := `A × {y}`)
     )
 
     have(`A × {y}` ∈ { `A × {y}` | y ∈ B } /\ ((x, y) ∈ `A × {y}`)) by RightAnd(secondReplacement, firstReplacement)
@@ -170,6 +167,41 @@ object CartesianProduct extends lisa.Main {
   }
 
   /**
+    * Inversion theorem --- If `z ∈ A × B` then `z` is a pair.
+    *
+    * Important theorem, since it allows us to work on pairs only.
+    */
+  val inversion = Theorem(
+    z ∈ (A × B) |- z === (fst(z), snd(z))
+  ) {
+    have(z === (x, y) |- z === (fst(z), snd(z))) by Restate.from(Pair.inversion of (a := x, b := y, x := z))
+    thenHave((x ∈ A) /\ (y ∈ B) /\ (z === (x, y)) |- z === (fst(z), snd(z))) by Tautology
+    thenHave(∃(y, (x ∈ A) /\ (y ∈ B) /\ (z === (x, y))) |- z === (fst(z), snd(z))) by LeftExists
+    thenHave(∃(x, ∃(y, (x ∈ A) /\ (y ∈ B) /\ (z === (x, y)))) |- z === (fst(z), snd(z))) by LeftExists
+    thenHave(thesis) by Substitute(membership)
+  }
+
+  /**
+    * Theorem --- If `z ∈ A × B` then `fst(z) ∈ A`.
+    */
+  val fstMembership = Theorem(
+    z ∈ (A × B) |- fst(z) ∈ A
+  ) {
+    have(z ∈ (A × B) |- (fst(z), snd(z)) ∈ (A × B)) by Congruence.from(inversion)
+    thenHave(thesis) by Tautology.fromLastStep(pairMembership of (x := fst(z), y := snd(z)))
+  }
+
+  /**
+    * Theorem --- If `z ∈ A × B` then `snd(z) ∈ B`.
+    */
+  val sndMembership = Theorem(
+    z ∈ (A × B) |- snd(z) ∈ B
+  ) {
+    have(z ∈ (A × B) |- (fst(z), snd(z)) ∈ (A × B)) by Congruence.from(inversion)
+    thenHave(thesis) by Tautology.fromLastStep(pairMembership of (x := fst(z), y := snd(z)))
+  }
+
+  /**
    * Theorem --- The product of any set with ∅ on the left is ∅.
    *
    *  `∅ × B = ∅`
@@ -210,63 +242,85 @@ object CartesianProduct extends lisa.Main {
   }
 
   /**
+    * Theorem --- The Cartesian product is monotonic:
+    *
+    *   If `A ⊆ C` and `B ⊆ D` then `A × B ⊆ C × D`.
+    */
+  val monotonic = Theorem(
+    (A ⊆ C, B ⊆ D) |- (A × B) ⊆ (C × D)
+  ) {
+    have(
+      (
+        ∀(x, x ∈ A ==> x ∈ C),
+        ∀(x, x ∈ B ==> x ∈ D),
+        ∃(x, ∃(y, x ∈ A /\ (y ∈ B) /\ ((x, y) === z)))
+      ) |-
+        ∃(x, ∃(y, x ∈ C /\ (y ∈ D) /\ ((x, y) === z)))
+    ) by Tableau
+    thenHave((A ⊆ C, B ⊆ D, z ∈ (A × B)) |- (z ∈ (C × D))) by Substitute(
+      ⊆.definition of (x := A, y := C),
+      ⊆.definition of (x := B, y := D),
+      membership,
+      membership of (A := C, B := D)
+    )
+    thenHave((A ⊆ C, B ⊆ D) |- z ∈ (A × B) ==> (z ∈ (C × D))) by Restate
+    thenHave((A ⊆ C, B ⊆ D) |- ∀(z, z ∈ (A × B) ==> z ∈ (C × D))) by Generalize
+    thenHave(thesis) by Substitute(⊆.definition of (x := (A × B), y := (C × D)))
+  }
+
+  /**
+    * Theorem --- The Cartesian product is left-monotonic:
+    *
+    *   If `A ⊆ C` then `A × B ⊆ C × B`.
+    */
+  val leftMonotonic = Theorem(
+    (A ⊆ C) |- (A × B) ⊆ (C × B)
+  ) {
+    have(thesis) by Tautology.from(
+      monotonic of (D := B),
+      Subset.reflexivity of (x := B)
+    )
+  }
+
+  /**
+    * Theorem --- The Cartesian product is right-monotonic:
+    *
+    *   If `B ⊆ D` then `A × B ⊆ A × D`.
+    */
+  val rightMonotonic = Theorem(
+    (B ⊆ D) |- (A × B) ⊆ (A × D)
+  ) {
+    have(thesis) by Tautology.from(
+      monotonic of (C := A),
+      Subset.reflexivity of (x := A)
+    )
+  }
+
+  /**
    * Theorem --- The union of two Cartesian products `A × B` and `C × D` is a subset
    * of the Cartesian product of the unions.
    */
   val union = Theorem(
     (A × B) ∪ (C × D) ⊆ ((A ∪ C) × (B ∪ D))
   ) {
-    sorry
+    val RHS = (A ∪ C) × (B ∪ D)
+
+    val left = have((A × B) ⊆ RHS) by Tautology.from(
+      monotonic of (C := A ∪ C, D := B ∪ D),
+      Union.leftSubset of (x := A, y := C),
+      Union.leftSubset of (x := B, y := D)
+    )
+    val right = have((C × D) ⊆ RHS) by Tautology.from(
+      monotonic of (A := C, B := D, C := A ∪ C, D := B ∪ D),
+      Union.rightSubset of (x := A, y := C),
+      Union.rightSubset of (x := B, y := D)
+    )
+
+    have(thesis) by Congruence.from(
+      Union.monotonic of (x := (A × B), y := (C × D), a := RHS, b := RHS),
+      Union.idempotence of (x := RHS),
+      left,
+      right
+    )
   }
-
-  /*
-
-  /**
-   * Theorem --- the union of two Cartesian products is a subset of the product of unions.
-   *
-   *    `a * b ∪ c * d ⊆ (a ∪ c) * (b ∪ d)`
-   */
-  val unionOfCartesianProducts = Theorem(
-    subset(setUnion(cartesianProduct(a, b), cartesianProduct(c, d)), cartesianProduct(setUnion(a, c), setUnion(b, d)))
-  ) {
-    val axb = cartesianProduct(a, b)
-    val cxd = cartesianProduct(c, d)
-
-    val unionDef = have(in(z, setUnion(axb, cxd)) |- in(z, axb) \/ in(z, cxd)) by Weakening(setUnionMembership of (x -> axb, y -> cxd))
-
-    /*
-      z in a x b
-      <=>
-      exist x, y. z = (x, y); x in a; y in b
-      ==> x in a U c, y in b U d
-      ==> z in (a U c) x (b U d)
-   */
-    val zab = have(in(z, axb) |- in(z, cartesianProduct(setUnion(a, c), setUnion(b, d)))) subproof {
-      have(forall(z, in(z, a) ==> in(z, setUnion(a, c)))) by Tautology.from(unionSubsetFirst of (b -> c), subsetAxiom of (x -> a, y -> setUnion(a, c)))
-      val xa = thenHave((in(x, a) ==> in(x, setUnion(a, c)))) by InstantiateForall(x)
-
-      have(forall(z, in(z, b) ==> in(z, setUnion(b, d)))) by Tautology.from(unionSubsetFirst of (a -> b, b -> d), subsetAxiom of (x -> b, y -> setUnion(b, d)))
-      val yb = thenHave((in(y, b) ==> in(y, setUnion(b, d)))) by InstantiateForall(y)
-
-      have(in(x, a) /\ in(y, b) |- in(x, setUnion(a, c)) /\ in(y, setUnion(b, d))) by Tautology.from(xa, yb)
-      thenHave((z === pair(x, y)) /\ in(x, a) /\ in(y, b) |- (z === pair(x, y)) /\ in(x, setUnion(a, c)) /\ in(y, setUnion(b, d))) by Tautology
-      thenHave((z === pair(x, y)) /\ in(x, a) /\ in(y, b) |- exists(y, (z === pair(x, y)) /\ in(x, setUnion(a, c)) /\ in(y, setUnion(b, d)))) by RightExists
-      thenHave((z === pair(x, y)) /\ in(x, a) /\ in(y, b) |- exists(x, exists(y, (z === pair(x, y)) /\ in(x, setUnion(a, c)) /\ in(y, setUnion(b, d))))) by RightExists
-      thenHave(exists(y, (z === pair(x, y)) /\ in(x, a) /\ in(y, b)) |- exists(x, exists(y, (z === pair(x, y)) /\ in(x, setUnion(a, c)) /\ in(y, setUnion(b, d))))) by LeftExists
-      thenHave(exists(x, exists(y, (z === pair(x, y)) /\ in(x, a) /\ in(y, b))) |- exists(x, exists(y, (z === pair(x, y)) /\ in(x, setUnion(a, c)) /\ in(y, setUnion(b, d))))) by LeftExists
-
-      have(thesis) by Tautology.from(lastStep, elemOfCartesianProduct of (x -> a, y -> b, t -> z), elemOfCartesianProduct of (x -> setUnion(a, c), y -> setUnion(b, d), t -> z))
-    }
-
-    val zcd =
-      have(in(z, cxd) |- in(z, cartesianProduct(setUnion(a, c), setUnion(b, d)))) by Substitution.ApplyRules(unionCommutativity)(
-        lastStep of (a -> c, b -> d, c -> a, d -> b)
-      )
-
-    have(in(z, setUnion(axb, cxd)) ==> in(z, cartesianProduct(setUnion(a, c), setUnion(b, d)))) by Tautology.from(unionDef, zab, zcd)
-    thenHave(forall(z, in(z, setUnion(axb, cxd)) ==> in(z, cartesianProduct(setUnion(a, c), setUnion(b, d))))) by RightForall
-
-    have(thesis) by Tautology.from(lastStep, subsetAxiom of (x -> setUnion(axb, cxd), y -> cartesianProduct(setUnion(a, c), setUnion(b, d))))
-  }
-   */
 }
