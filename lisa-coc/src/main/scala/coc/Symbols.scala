@@ -16,7 +16,7 @@ object Symbols extends lisa.Main {
   val T, T1, T2 = variable[Set]
 
   // x : T <=> x ∈ T
-  val hasType = DEF(λ(x, λ(T, x ∈ T)))
+  val typeOf = ∈
 
   // Type/Term application e1 e2 <=> app(e1)(e2)
   val app = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f)))).printAs(args => {
