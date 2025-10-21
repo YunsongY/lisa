@@ -19,11 +19,12 @@ object Symbols extends lisa.Main {
   val typeOf = ∈
 
   // Type/Term application e1 e2 <=> app(e1)(e2)
-  val app = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f)))).printAs(args => {
-    val func = args(0)
-    val arg = args(1)
-    s"$func($arg)"
-  })
+  val app = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
+    .printAs(args => {
+      val func = args(0)
+      val arg = args(1)
+      s"$func($arg)"
+    })
 
   // Type/Term abstraction λx:T.e <=> abs(T)(λx.e)
   val abs = DEF(λ(T, λ(e, { (x, app(e)(x)) | x ∈ T }))).printAs(args => {
@@ -39,7 +40,10 @@ object Symbols extends lisa.Main {
       λ(
         T2, {
           f ∈ 𝒫(T1 × { app(T2)(a) | a ∈ T1 }) |
-            (∀(x ∈ T1, ∃!(y, (x, y) ∈ f /\ y ∈ app(T2)(x))))
+            // f is a function
+            (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\
+            // f(a)'s type should be T2(a)
+            (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ app(T2)(a))))) //
         }
       )
     )
