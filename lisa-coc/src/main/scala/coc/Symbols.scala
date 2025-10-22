@@ -83,4 +83,18 @@ object Symbols extends lisa.Main {
     thenHave(∃(x, P(F(x)) /\ (y === F(x))) |- P(y)) by LeftExists
     thenHave(thesis) by Restate
   }
+
+  val equalTransitivity = Theorem(
+    ((x === y) /\ (y === z)) |- (x === z)
+  ) {
+    assume(x === y)
+    assume(y === z)
+    have(x === z) by Congruence
+    thenHave(thesis) by Restate
+  }
+  val equalTransitivityApplication = Theorem(
+    ((x === y) /\ (y === z)) ==> (x === z)
+  ) {
+    have(thesis) by Tautology.from(equalTransitivity)
+  }
 }

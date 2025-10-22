@@ -62,23 +62,69 @@ object TypingRules extends lisa.Main {
 
     // Expression e's functionality check
     val functional = have(∀(x ∈ T1, ∃!(y, (x, y) ∈ abs(T1)(e)))) subproof {
+      // Parse y === e(x) from (x, y) ∈ abs(T1)(e)
+      have((x, y) ∈ abs(T1)(e) |- y === app(e)(x)) subproof {
+        have(((a, app(e)(a)) === (x, y)) ==> (a === x) /\ (app(e)(a) === y)) by Tautology.from(Pair.extensionality of (b := app(e)(a), c := x, d := y))
+        val premise = thenHave(∀(a, ((a, app(e)(a)) === (x, y)) ==> (a === x) /\ (app(e)(a) === y))) by RightForall
+        assume((x, y) ∈ abs(T1)(e))
+        thenHave((x, y) ∈ { (a, app(e)(a)) | a ∈ T1 }) by Substitute(abs.definition of (x := a, T := T1))
+        thenHave(x ∈ T1 /\ (y === app(e)(x))) by Tautology.fromLastStep(
+          Replacement.membership of (y := (x, y), x := a, A := T1, F := λ(x, (x, app(e)(x)))),
+          premise,
+          existPartialApply of (
+            P := λ(a, (a, app(e)(a)) === (x, y)),
+            Q := λ(a, (a === x) /\ (app(e)(a) === y)),
+            R := λ(a, a ∈ T1)
+          ),
+          onePointRule of (x := a, y := x, P := λ(x, x ∈ T1 /\ (app(e)(x) === y)))
+        )
+        thenHave(thesis) by Weakening
+      }
+      val deriveSecondOne = thenHave((x, y) ∈ abs(T1)(e) ==> (y === app(e)(x))) by Restate
+
+      // Ensure exist y for (x, y) ∈ λ(x: T1).e
+      val existCond = have(x ∈ T1 |- ∃(y, (x, y) ∈ abs(T1)(e))) subproof {
+        assume(x ∈ T1)
+        have((x, app(e)(x)) ∈ { (x, app(e)(x)) | x ∈ T1 }) by Tautology.from(Replacement.map of (A := T1, F := λ(x, (x, app(e)(x)))))
+        thenHave((x, app(e)(x)) ∈ abs(T1)(e)) by Substitute(abs.definition of (T := T1))
+        thenHave(thesis) by RightExists
+      }
+
+      // Ensure uniqueness
+      have(∀(y, ∀(z, (x, y) ∈ abs(T1)(e) /\ (x, z) ∈ abs(T1)(e) ==> (y === z)))) subproof {
+        have((x, y) ∈ abs(T1)(e) |- (x, y) ∈ abs(T1)(e)) by Hypothesis
+        val case1 = thenHave((x, y) ∈ abs(T1)(e) |- y === app(e)(x)) by Tautology.fromLastStep(deriveSecondOne)
+        have((x, z) ∈ abs(T1)(e) |- (x, z) ∈ abs(T1)(e)) by Hypothesis
+        val total = have((x, y) ∈ abs(T1)(e) /\ (x, z) ∈ abs(T1)(e) |- y === z) by Tautology.from(
+          case1,
+          deriveSecondOne of (y := z),
+          equalTransitivityApplication of (x := y, y := app(e)(x), z := z)
+        )
+        thenHave(((x, y) ∈ abs(T1)(e) /\ (x, z) ∈ abs(T1)(e)) ==> (y === z)) by Restate
+        thenHave(thesis) by Generalize
+      }
+      thenHave(x ∈ T1 |- ∃!(y, (x, y) ∈ abs(T1)(e))) by Tautology.fromLastStep(
+        existCond,
+        existsOneAlternativeDefinition of (P := λ(y, (x, y) ∈ abs(T1)(e)))
+      )
+      thenHave(x ∈ T1 ==> ∃!(y, (x, y) ∈ abs(T1)(e))) by Restate
+      thenHave(thesis) by RightForall
+    }
+
+    val typing_check = have(∀(a, ∀(b, (a, b) ∈ abs(T1)(e) ==> (b ∈ app(T2)(a))))) subproof {
       sorry
     }
-    sorry
-    // val typing_check = have(∀(a, ∀(b, (a, b) ∈ abs(T1)(e) ==> (b ∈ app(T2)(a))))) subproof {
-    //   sorry
-    // }
 
-    // have(
-    //   abs(T1)(e) ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) /\
-    //     (∀(x ∈ T1, ∃!(y, (x, y) ∈ abs(T1)(e)))) /\
-    //     (∀(a, ∀(b, (a, b) ∈ abs(T1)(e) ==> (b ∈ app(T2)(a)))))
-    // ) by Tautology.from(boundary_check, functional, typing_check)
-    // thenHave(abs(T1)(e) ∈ {
-    //   f ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) |
-    //     (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ app(T2)(a)))))
-    // }) by Substitute(Pi_expansion of (e1 := abs(T1)(e)))
-    // thenHave(thesis) by Substitute(Pi.definition)
+    have(
+      abs(T1)(e) ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) /\
+        (∀(x ∈ T1, ∃!(y, (x, y) ∈ abs(T1)(e)))) /\
+        (∀(a, ∀(b, (a, b) ∈ abs(T1)(e) ==> (b ∈ app(T2)(a)))))
+    ) by Tautology.from(boundary_check, functional, typing_check)
+    thenHave(abs(T1)(e) ∈ {
+      f ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) |
+        (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ app(T2)(a)))))
+    }) by Substitute(Pi_expansion of (e1 := abs(T1)(e)))
+    thenHave(thesis) by Substitute(Pi.definition)
   }
 
   /**
