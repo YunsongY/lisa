@@ -39,7 +39,7 @@ object Symbols extends lisa.Main {
       T1,
       λ(
         T2, {
-          f ∈ 𝒫(T1 × { app(T2)(a) | a ∈ T1 }) |
+          f ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) |
             // f is a function
             (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\
             // f(a)'s type should be T2(a)
