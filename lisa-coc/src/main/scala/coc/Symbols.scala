@@ -2,6 +2,7 @@ package coc
 
 import lisa.maths.SetTheory.Base.Predef.{*, given}
 import lisa.maths.Quantifiers.∃!
+import lisa.utils.prooflib.BasicStepTactic.LeftForall
 
 /**
  * This file defines the most common variable symbols (x, y, z, etc.)
@@ -14,6 +15,8 @@ object Symbols extends lisa.Main {
 
   // Base type
   val T, T1, T2 = variable[Set]
+
+  val Q, R = variable[Ind >>: Prop]
 
   // x : T <=> x ∈ T
   val typeOf = ∈
@@ -48,4 +51,36 @@ object Symbols extends lisa.Main {
       )
     )
   )
+
+  val Pi_expansion = Theorem(
+    e1 ∈ {
+      f ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) |
+        (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ app(T2)(a)))))
+    } <=> e1 ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) /\
+      (∀(x ∈ T1, ∃!(y, (x, y) ∈ e1))) /\ (∀(a, ∀(b, (a, b) ∈ e1 ==> (b ∈ app(T2)(a)))))
+  ) {
+    have(thesis) by Comprehension.apply
+  }
+
+  val existPartialApply = Theorem(
+    (∀(x, P(x) ==> Q(x)), ∃(x, P(x) /\ R(x))) |- ∃(x, Q(x) /\ R(x))
+  ) {
+    assume(∀(x, P(x) ==> Q(x)))
+    val premise = thenHave(P(x) ==> Q(x)) by InstantiateForall(x)
+    val goal = have(P(x) /\ R(x) |- Q(x) /\ R(x)) subproof {
+      assume(P(x) /\ R(x))
+      have(thesis) by Tautology.from(premise)
+    }
+    thenHave(P(x) /\ R(x) |- ∃(x, Q(x) /\ R(x))) by RightExists
+    thenHave(thesis) by LeftExists
+  }
+
+  val onePointFunctionRule = Theorem(
+    ∃(x, P(F(x)) /\ (y === F(x))) ==> P(y)
+  ) {
+    have((P(F(x)), y === F(x)) |- P(y)) by Congruence
+    thenHave(P(F(x)) /\ (y === F(x)) |- P(y)) by Restate
+    thenHave(∃(x, P(F(x)) /\ (y === F(x))) |- P(y)) by LeftExists
+    thenHave(thesis) by Restate
+  }
 }
