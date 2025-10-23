@@ -10,7 +10,10 @@ import lisa.maths.Quantifiers.∃!
 
 object Symbols extends lisa.Main {
   // Base term
-  val e, e1, e2 = variable[Ind]
+  val e1, e2 = variable[Ind]
+
+  // Function
+  val e = variable[Ind >>: Ind]
 
   // Base type
   val T, T1, T2 = variable[Set]
@@ -22,7 +25,7 @@ object Symbols extends lisa.Main {
   val typeOf = ∈
 
   // Type/Term application e1 e2 <=> app(e1)(e2)
-  val app = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
+  val app: Constant[Set >>: Set >>: Set] = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
     .printAs(args => {
       val func = args(0)
       val arg = args(1)
@@ -30,14 +33,16 @@ object Symbols extends lisa.Main {
     })
 
   // Type/Term abstraction λx:T.e <=> abs(T)(λx.e)
-  val abs = DEF(λ(T, λ(e, { (x, app(e)(x)) | x ∈ T }))).printAs(args => {
-    val typ = args(0)
-    val body = args(1)
-    s"λ(x: $typ). $body(x)"
-  })
+  val abs: Constant[Set >>: (Ind >>: Ind) >>: Ind] = DEF(λ(T, λ(e, { (x, e(x)) | x ∈ T })))
+    .printAs(args => {
+      val typ = args(0)
+      val body = args(1)
+      s"λ(x: $typ). $body(x)"
+    })
+  def fun(x: Variable[Ind], typ: Expr[Set], expr: Expr[Ind]) = abs(typ)(λ(x, expr))
 
   // Dependent productin type: Π(x:T1).T2
-  val Pi = DEF(
+  val Pi: Constant[Set >>: Set >>: Set] = DEF(
     λ(
       T1,
       λ(

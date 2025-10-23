@@ -21,38 +21,38 @@ object TypingRules extends lisa.Main {
    *    (λx:T1.e(x)) : Π(x: T1).T2
    */
   val TAbs = Theorem(
-    ∀(x ∈ T1, typeOf(app(e)(x))(app(T2)(x)))
+    ∀(x ∈ T1, typeOf(e(x))(app(T2)(x)))
       |- typeOf(abs(T1)(e))(Pi(T1)(T2))
   ) {
-    assume(∀(x ∈ T1, typeOf(app(e)(x))(app(T2)(x))))
-    val premise1 = have(x ∈ T1 ==> typeOf(app(e)(x))(app(T2)(x))) by InstantiateForall
+    assume(∀(x ∈ T1, typeOf(e(x))(app(T2)(x))))
+    val premise1 = have(x ∈ T1 ==> typeOf(e(x))(app(T2)(x))) by InstantiateForall
 
     // Set boundary checking
     have(abs(T1)(e) ⊆ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))) subproof {
       have(z ∈ abs(T1)(e) |- z ∈ abs(T1)(e)) by Hypothesis
-      thenHave(z ∈ abs(T1)(e) |- z ∈ { (x, app(e)(x)) | x ∈ T1 }) by Substitute(abs.definition of (T := T1))
-      val stmt1 = thenHave(z ∈ abs(T1)(e) |- ∃(x, x ∈ T1 /\ ((x, app(e)(x)) === z))) by
-        Tautology.fromLastStep(Replacement.membership of (y := z, F := λ(x, (x, app(e)(x))), A := T1))
-      have(x ∈ T1 ==> (x, app(e)(x)) ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))) subproof {
+      thenHave(z ∈ abs(T1)(e) |- z ∈ { (x, e(x)) | x ∈ T1 }) by Substitute(abs.definition of (T := T1))
+      val stmt1 = thenHave(z ∈ abs(T1)(e) |- ∃(x, x ∈ T1 /\ ((x, e(x)) === z))) by
+        Tautology.fromLastStep(Replacement.membership of (y := z, F := λ(x, (x, e(x))), A := T1))
+      have(x ∈ T1 ==> (x, e(x)) ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))) subproof {
         assume(x ∈ T1)
         have(app(T2)(x) ∈ { app(T2)(a) | a ∈ T1 }) by Tautology.from(Replacement.map of (A := T1, F := λ(x, app(T2)(x))))
-        have(app(e)(x) ∈ app(T2)(x) /\ app(T2)(x) ∈ { app(T2)(a) | a ∈ T1 }) by Tautology.from(lastStep, premise1)
-        thenHave(∃(y, app(e)(x) ∈ y /\ y ∈ { app(T2)(a) | a ∈ T1 })) by RightExists
+        have(e(x) ∈ app(T2)(x) /\ app(T2)(x) ∈ { app(T2)(a) | a ∈ T1 }) by Tautology.from(lastStep, premise1)
+        thenHave(∃(y, e(x) ∈ y /\ y ∈ { app(T2)(a) | a ∈ T1 })) by RightExists
         have(thesis) by Tautology.from(
           lastStep,
-          unionAxiom of (z := app(e)(x), x := { app(T2)(a) | a ∈ T1 }),
-          CartesianProduct.membershipSufficientCondition of (y := app(e)(x), A := T1, B := ⋃({ app(T2)(a) | a ∈ T1 }))
+          unionAxiom of (z := e(x), x := { app(T2)(a) | a ∈ T1 }),
+          CartesianProduct.membershipSufficientCondition of (y := e(x), A := T1, B := ⋃({ app(T2)(a) | a ∈ T1 }))
         )
       }
-      thenHave(∀(x ∈ T1, (x, app(e)(x)) ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 })))) by RightForall
+      thenHave(∀(x ∈ T1, (x, e(x)) ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 })))) by RightForall
       thenHave(z ∈ abs(T1)(e) |- z ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))) by Tautology.fromLastStep(
         stmt1,
         existPartialApply of (
           P := λ(x, x ∈ T1),
-          Q := λ(x, (x, app(e)(x)) ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))),
-          R := λ(x, (x, app(e)(x)) === z)
+          Q := λ(x, (x, e(x)) ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))),
+          R := λ(x, (x, e(x)) === z)
         ),
-        onePointFunctionRule of (P := λ(x, x ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))), y := z, F := λ(x, (x, app(e)(x))))
+        onePointFunctionRule of (P := λ(x, x ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))), y := z, F := λ(x, (x, e(x))))
       )
       thenHave(z ∈ abs(T1)(e) ==> z ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 }))) by Restate
       thenHave(∀(z, z ∈ abs(T1)(e) ==> z ∈ (T1 × ⋃({ app(T2)(a) | a ∈ T1 })))) by RightForall
@@ -61,42 +61,42 @@ object TypingRules extends lisa.Main {
     val boundary_check = thenHave(abs(T1)(e) ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 }))) by Substitute(powerSetAxiom)
 
     // Parse y === e(x) from (x, y) ∈ abs(T1)(e)
-    have((x, y) ∈ abs(T1)(e) |- x ∈ T1 /\ (y === app(e)(x))) subproof {
-      have(((a, app(e)(a)) === (x, y)) ==> (a === x) /\ (app(e)(a) === y)) by Tautology.from(Pair.extensionality of (b := app(e)(a), c := x, d := y))
-      val premise = thenHave(∀(a, ((a, app(e)(a)) === (x, y)) ==> (a === x) /\ (app(e)(a) === y))) by RightForall
+    have((x, y) ∈ abs(T1)(e) |- x ∈ T1 /\ (y === e(x))) subproof {
+      have(((a, e(a)) === (x, y)) ==> (a === x) /\ (e(a) === y)) by Tautology.from(Pair.extensionality of (b := e(a), c := x, d := y))
+      val premise = thenHave(∀(a, ((a, e(a)) === (x, y)) ==> (a === x) /\ (e(a) === y))) by RightForall
       assume((x, y) ∈ abs(T1)(e))
-      thenHave((x, y) ∈ { (a, app(e)(a)) | a ∈ T1 }) by Substitute(abs.definition of (x := a, T := T1))
+      thenHave((x, y) ∈ { (a, e(a)) | a ∈ T1 }) by Substitute(abs.definition of (x := a, T := T1))
       thenHave(thesis) by Tautology.fromLastStep(
-        Replacement.membership of (y := (x, y), x := a, A := T1, F := λ(x, (x, app(e)(x)))),
+        Replacement.membership of (y := (x, y), x := a, A := T1, F := λ(x, (x, e(x)))),
         premise,
         existPartialApply of (
-          P := λ(a, (a, app(e)(a)) === (x, y)),
-          Q := λ(a, (a === x) /\ (app(e)(a) === y)),
+          P := λ(a, (a, e(a)) === (x, y)),
+          Q := λ(a, (a === x) /\ (e(a) === y)),
           R := λ(a, a ∈ T1)
         ),
-        onePointRule of (x := a, y := x, P := λ(x, x ∈ T1 /\ (app(e)(x) === y)))
+        onePointRule of (x := a, y := x, P := λ(x, x ∈ T1 /\ (e(x) === y)))
       )
     }
-    val deriveSecondOne = thenHave((x, y) ∈ abs(T1)(e) ==> x ∈ T1 /\ (y === app(e)(x))) by Restate
+    val deriveSecondOne = thenHave((x, y) ∈ abs(T1)(e) ==> x ∈ T1 /\ (y === e(x))) by Restate
 
     // Expression e's functionality check
     val functional = have(∀(x ∈ T1, ∃!(y, (x, y) ∈ abs(T1)(e)))) subproof {
       // Ensure exist y for (x, y) ∈ λ(x: T1).e
       val existCond = have(x ∈ T1 |- ∃(y, (x, y) ∈ abs(T1)(e))) subproof {
         assume(x ∈ T1)
-        have((x, app(e)(x)) ∈ { (x, app(e)(x)) | x ∈ T1 }) by Tautology.from(Replacement.map of (A := T1, F := λ(x, (x, app(e)(x)))))
-        thenHave((x, app(e)(x)) ∈ abs(T1)(e)) by Substitute(abs.definition of (T := T1))
+        have((x, e(x)) ∈ { (x, e(x)) | x ∈ T1 }) by Tautology.from(Replacement.map of (A := T1, F := λ(x, (x, e(x)))))
+        thenHave((x, e(x)) ∈ abs(T1)(e)) by Substitute(abs.definition of (T := T1))
         thenHave(thesis) by RightExists
       }
       // Ensure uniqueness
       have(∀(y, ∀(z, (x, y) ∈ abs(T1)(e) /\ (x, z) ∈ abs(T1)(e) ==> (y === z)))) subproof {
         have((x, y) ∈ abs(T1)(e) |- (x, y) ∈ abs(T1)(e)) by Hypothesis
-        val case1 = thenHave((x, y) ∈ abs(T1)(e) |- y === app(e)(x)) by Tautology.fromLastStep(deriveSecondOne)
+        val case1 = thenHave((x, y) ∈ abs(T1)(e) |- y === e(x)) by Tautology.fromLastStep(deriveSecondOne)
         have((x, z) ∈ abs(T1)(e) |- (x, z) ∈ abs(T1)(e)) by Hypothesis
         val total = have((x, y) ∈ abs(T1)(e) /\ (x, z) ∈ abs(T1)(e) |- y === z) by Tautology.from(
           case1,
           deriveSecondOne of (y := z),
-          equalTransitivityApplication of (x := y, y := app(e)(x), z := z)
+          equalTransitivityApplication of (x := y, y := e(x), z := z)
         )
         thenHave(((x, y) ∈ abs(T1)(e) /\ (x, z) ∈ abs(T1)(e)) ==> (y === z)) by Restate
         thenHave(thesis) by Generalize
@@ -115,7 +115,7 @@ object TypingRules extends lisa.Main {
       thenHave((a, b) ∈ abs(T1)(e) |- b ∈ app(T2)(a)) by Tautology.fromLastStep(
         deriveSecondOne of (x := a, y := b),
         premise1 of (x := a),
-        localSubstitute of (P := λ(x, x ∈ app(T2)(a)), x := app(e)(a), y := b)
+        localSubstitute of (P := λ(x, x ∈ app(T2)(a)), x := e(a), y := b)
       )
       thenHave((a, b) ∈ abs(T1)(e) ==> b ∈ app(T2)(a)) by Restate
       thenHave(thesis) by Generalize
@@ -176,9 +176,12 @@ object TypingRules extends lisa.Main {
    *  e2: T1 ==> app(abs(T1)(e))(e2) === app(e)(e2)
    */
   val BetaReduction = Theorem(
-    typeOf(e2)(T1) |- app(abs(T1)(e))(e2) === app(e)(e2)
+    typeOf(e2)(T1) |- app(abs(T1)(e))(e2) === e(e2)
   ) {
     assume(e2 ∈ T1)
     sorry
   }
+
+  // app(fun(x, Nat, sqrt(x+x)), 3)
+  // app(abs(Nat, λ(x, sqrt(x+x))), 3) === λ(x, sqrt(x+x))(3) ========= sqrt(3+3)
 }
