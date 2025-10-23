@@ -105,9 +105,9 @@ lazy val examples = Project(
   .settings(commonSettings3)
   .dependsOn(root)
 
-lazy val coc = Project(
-  id = "lisa-coc",
-  base = file("lisa-coc")
+lazy val cic = Project(
+  id = "lisa-cic",
+  base = file("lisa-cic")
 )
   .settings(commonSettings)
   .settings(commonSettings3)
