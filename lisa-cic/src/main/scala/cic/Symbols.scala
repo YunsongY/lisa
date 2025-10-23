@@ -1,4 +1,4 @@
-package coc
+package cic
 
 import lisa.maths.SetTheory.Base.Predef.{*, given}
 import lisa.maths.Quantifiers.∃!

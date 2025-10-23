@@ -1,4 +1,4 @@
-package coc
+package cic
 
 import Symbols.*
 import lisa.maths.SetTheory.Base.Predef.{*, given}
@@ -9,21 +9,6 @@ import lisa.maths.Quantifiers.*
  */
 
 object Helper extends lisa.Main {
-
-  /**
-   * Unfolds the Set Comprehension definition of the Pi type.
-   *
-   * Proves: e1 ∈ {f ∈ S | P(f)} <=> e1 ∈ S ∧ P(e1)
-   */
-  val Pi_expansion = Theorem(
-    e1 ∈ {
-      f ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) |
-        (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ app(T2)(a)))))
-    } <=> e1 ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) /\
-      (∀(x ∈ T1, ∃!(y, (x, y) ∈ e1))) /\ (∀(a, ∀(b, (a, b) ∈ e1 ==> (b ∈ app(T2)(a)))))
-  ) {
-    have(thesis) by Comprehension.apply
-  }
 
   /**
    * Predicate Logic Lemma: Distributes a universal implication (∀)
