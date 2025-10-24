@@ -16,7 +16,10 @@ object Symbols extends lisa.Main {
   val e = variable[Ind >>: Ind]
 
   // Base type
-  val T, T1, T2 = variable[Set]
+  val T, T1 = variable[Set]
+
+  // Dependent type
+  val T2 = variable[Ind >>: Set]
 
   // Proposition
   val Q, R = variable[Ind >>: Prop]
@@ -42,16 +45,16 @@ object Symbols extends lisa.Main {
   def fun(x: Variable[Ind], typ: Expr[Set], expr: Expr[Ind]) = abs(typ)(λ(x, expr))
 
   // Dependent productin type: Π(x:T1).T2
-  val Pi: Constant[Set >>: Set >>: Set] = DEF(
+  val Pi: Constant[Set >>: (Ind >>: Set) >>: Set] = DEF(
     λ(
       T1,
       λ(
         T2, {
-          f ∈ 𝒫(T1 × ⋃({ app(T2)(a) | a ∈ T1 })) |
+          f ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) |
             // f is a function
             (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\
             // f(a)'s type should be T2(a)
-            (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ app(T2)(a))))) //
+            (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a))))) //
         }
       )
     )
