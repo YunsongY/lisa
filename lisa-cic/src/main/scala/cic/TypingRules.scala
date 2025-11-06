@@ -11,7 +11,7 @@ object TypingRules extends lisa.Main {
    *
    * Proves: e1 ∈ {f ∈ S | P(f)} <=> e1 ∈ S ∧ P(e1)
    */
-  val pi_expansion = Theorem(
+  val pi_expansion = Lemma(
     e1 ∈ {
       f ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) |
         (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a)))))
@@ -31,7 +31,7 @@ object TypingRules extends lisa.Main {
    *
    * This theorem is crucial for both introducing and eliminating the abs operator from proofs.
    */
-  val absApplicationMembership = Theorem(
+  val absApplicationMembership = Lemma(
     ((x, y) ∈ abs(T)(e) <=> x ∈ T /\ (y === e(x)))
   ) {
     val `==>` = have((x, y) ∈ abs(T)(e) ==> x ∈ T /\ (y === e(x))) subproof {
@@ -70,7 +70,7 @@ object TypingRules extends lisa.Main {
    *
    * For any x in the domain T, there exists a unique result y such that (x, y) is in abs(T)(e).
    */
-  val absApplicationFunctionality = Theorem(∀(x ∈ T, ∃!(y, (x, y) ∈ abs(T)(e)))) {
+  val absApplicationFunctionality = Lemma(∀(x ∈ T, ∃!(y, (x, y) ∈ abs(T)(e)))) {
     have(x ∈ T |- x ∈ T) by Hypothesis
     // Ensure exist y for (x, y) ∈ λ(x: T).e
     val existCond = have(x ∈ T |- ∃(y, (x, y) ∈ abs(T)(e))) subproof {
@@ -103,22 +103,21 @@ object TypingRules extends lisa.Main {
    *    ───────── (T-Var)
    *    x : T
    */
-  val TVar = Theorem(typeOf(x)(T) |- typeOf(x)(T)) {
+  val TVar = Theorem(e1 ∈ T |- e1 ∈ T) {
     have(thesis) by Tautology
   }
 
   /**
-   *    ∀(x: T1). e(x) : T2(x)
-   *    ───────────────────── (T-Abs)
+   *    x: T1 |- e(x) : T2(x)
+   *    ──────────────────────── (T-Abs)
    *    (λx:T1.e(x)) : Π(x: T1).T2
    */
   val TAbs = Theorem(
-    ∀(x ∈ T1, typeOf(e(x))(T2(x)))
-      |- typeOf(abs(T1)(e))(Pi(T1)(T2))
+    ∀(x ∈ T1, e(x) ∈ T2(x))
+      |- abs(T1)(e) ∈ Pi(T1)(T2)
   ) {
-    assume(∀(x ∈ T1, typeOf(e(x))(T2(x))))
-    val premise = have(x ∈ T1 ==> typeOf(e(x))(T2(x))) by InstantiateForall
-
+    assume(∀(x ∈ T1, e(x) ∈ T2(x)))
+    val premise = have(x ∈ T1 ==> e(x) ∈ T2(x)) by InstantiateForall
     // Set boundary checking
     have(abs(T1)(e) ⊆ (T1 × ⋃({ T2(a) | a ∈ T1 }))) subproof {
       have(z ∈ abs(T1)(e) |- z ∈ abs(T1)(e)) by Hypothesis
@@ -180,14 +179,13 @@ object TypingRules extends lisa.Main {
   /**
    *    e1: Π(x: T1).T2, e2: T1
    *    ────────────────────────── (T-App)
-   *    e1(e2): T2(e2)
+   *         e1(e2): T2(e2)
    */
   val TApp = Theorem(
-    (typeOf(e1)(Pi(T1)(T2)), typeOf(e2)(T1))
-      |- typeOf(app(e1)(e2))(T2(e2))
+    (e1 ∈ Pi(T1)(T2), e2 ∈ T1)
+      |- app(e1)(e2) ∈ T2(e2)
   ) {
-    assume(typeOf(e1)(Pi(T1)(T2)))
-    assume(typeOf(e2)(T1))
+    assumeAll
     have(e1 ∈ Pi(T1)(T2)) by Restate
     thenHave(
       e1 ∈ {
@@ -212,6 +210,19 @@ object TypingRules extends lisa.Main {
   }
 
   /**
+   *    e1: T,  T === T'
+   * ──────────────────── (T-Conv)
+   *       e1 : T'
+   */
+
+  val TConv = Theorem(
+    (e1 ∈ T, T === T1) |- e1 ∈ T1
+  ) {
+    assumeAll
+    have(thesis) by Tautology.from(localSubstitute of (P := λ(x, e1 ∈ x), x := T, y := T1))
+  }
+
+  /**
    * Beta Reduction(β-reduction):
    *
    *  (λx:T. e(x))(e2) --> e(e2)
@@ -219,7 +230,7 @@ object TypingRules extends lisa.Main {
    *  e2: T ==> app(abs(T)(e))(e2) === e(e2)
    */
   val BetaReduction = Theorem(
-    typeOf(e2)(T) |- app(abs(T)(e))(e2) === e(e2)
+    e2 ∈ T |- app(abs(T)(e))(e2) === e(e2)
   ) {
     assume(e2 ∈ T)
     have(e(e2) === e(e2)) by RightRefl

@@ -8,7 +8,7 @@ import lisa.maths.Quantifiers.∃!
  * and their types for a consitent use through the Calculus of Construction
  */
 
-object Symbols extends lisa.Main {
+object Symbols extends lisa.Main:
   // Base term
   val e1, e2 = variable[Ind]
 
@@ -16,10 +16,10 @@ object Symbols extends lisa.Main {
   val e = variable[Ind >>: Ind]
 
   // Base type
-  val T, T1 = variable[Set]
+  val T, T1 = variable[Ind]
 
   // Dependent type
-  val T2 = variable[Ind >>: Set]
+  val T2 = variable[Ind >>: Ind]
 
   // Proposition
   val Q, R = variable[Ind >>: Prop]
@@ -28,24 +28,43 @@ object Symbols extends lisa.Main {
   val typeOf = ∈
 
   // Type/Term application e1 e2 <=> app(e1)(e2)
-  val app: Constant[Set >>: Set >>: Set] = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
+  val app: Constant[Ind >>: Ind >>: Ind] = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
     .printAs(args => {
       val func = args(0)
       val arg = args(1)
-      s"$func($arg)"
+      s"$func.($arg)"
     })
 
+  // Pattern extractor for the 'app' Shallow Embedding constant.
+  // It allows matching expressions of the form app(func)(arg) using the pattern Sapp(func, arg)
+  object Sapp:
+    def unapply(e: Expr[?]): Option[(Expr[Ind], Expr[Ind])] =
+      e match
+        case App(App(`app`, func), arg) =>
+          Some((func.asInstanceOf[Expr[Ind]], arg.asInstanceOf[Expr[Ind]]))
+        case _ => None
+
   // Type/Term abstraction λx:T.e <=> abs(T)(λx.e)
-  val abs: Constant[Set >>: (Ind >>: Ind) >>: Ind] = DEF(λ(T, λ(e, { (x, e(x)) | x ∈ T })))
-    .printAs(args => {
+  val abs: Constant[Ind >>: (Ind >>: Ind) >>: Ind] = DEF(λ(T, λ(e, { (x, e(x)) | x ∈ T })))
+    .printAs(args =>
       val typ = args(0)
       val body = args(1)
       s"λ(x: $typ). $body(x)"
-    })
-  def fun(x: Variable[Ind], typ: Expr[Set], expr: Expr[Ind]) = abs(typ)(λ(x, expr))
+    )
+  def fun(x: Variable[Ind], typ: Expr[Ind], expr: Expr[Ind]) = abs(typ)(λ(x, expr))
+
+  // Pattern extractor for the 'abs' Shallow Embedding constant.
+  // It allows matching expressions of the form abs(typ)(body) using the pattern Sabs(typ, body).
+  object Sabs:
+    def unapply(e: Expr[?]): Option[(Expr[Ind], Expr[Ind >>: Ind])] =
+      e match
+        // We match against the specific Constant 'abs' being applied twice: App(App(abs, typ), body)
+        case App(App(`abs`, typ), body) =>
+          Some((typ.asInstanceOf[Expr[Ind]], body.asInstanceOf[Expr[Ind >>: Ind]]))
+        case _ => None
 
   // Dependent productin type: Π(x:T1).T2
-  val Pi: Constant[Set >>: (Ind >>: Set) >>: Set] = DEF(
+  val Pi: Constant[Ind >>: (Ind >>: Ind) >>: Ind] = DEF(
     λ(
       T1,
       λ(
@@ -59,4 +78,22 @@ object Symbols extends lisa.Main {
       )
     )
   )
-}
+
+  // Pattern extractor for the 'Pi' Shallow Embedding constant.
+  // It allows matching expressions of the form Pi(T1)(T2) using the pattern SPi(T1, T2).
+  object SPi:
+    def unapply(e: Expr[?]): Option[(Expr[Ind], Expr[Ind >>: Ind])] =
+      e match
+        // We match against the specific Constant 'Pi' being applied twice: App(App(Pi, T1), T2)
+        case App(App(`Pi`, t1), t2) =>
+          Some((t1.asInstanceOf[Expr[Ind]], t2.asInstanceOf[Expr[Ind >>: Ind]]))
+        case _ => None
+
+  /**
+   * Notation `A ->: B <=> Π(x:A).B`
+   * where B is independent on x
+   */
+  extension (a: Expr[Ind]) {
+    infix def ->:(b: Expr[Ind]): Expr[Ind] =
+      Pi(a)(λ(x, b))
+  }
