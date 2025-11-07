@@ -8,20 +8,22 @@ import scala.collection.Set
 import lisa.SetTheoryLibrary
 import TypingRules.{TVar, TAbs, TApp, TConv}
 import Symbols.*
-import lisa.utils.prooflib.BasicStepTactic.TacticSubproof
-import lisa.utils.prooflib.SimpleDeducedSteps.Restate
-import lisa.utils.prooflib.BasicStepTactic.RightRefl
 
 object Tactics:
   object Typecheck extends ProofTactic:
     // Bidirectional type checking proof construct(infer, check, equal)
-    def prove(using proof: SetTheoryLibrary.Proof)(bot: F.Sequent): proof.ProofTacticJudgement =
+    def prove(using lib: SetTheoryLibrary.type, proof: lib.Proof)(bot: F.Sequent): proof.ProofTacticJudgement =
+      import lib.*
       if (bot.right.size != 1) return proof.InvalidProofTactic("Typecheck can only prove one theorem once upon a time")
       val premises = bot.left
       val goal = bot.right.head
-      goal match
-        case typeOf(tm, ty) => checkProof(using SetTheoryLibrary)(premises, tm, ty)
-        case _ => proof.InvalidProofTactic("Type check can only check type relation(∈)")
+      TacticSubproof {
+        goal match
+          case typeOf(tm, ty) =>
+            val innerProof = checkProof(using SetTheoryLibrary)(premises, tm, ty)
+            have(premises |- tm ∈ ty) by Weakening(have(innerProof))
+          case _ => return proof.InvalidProofTactic("Type check can only check type relation(∈)")
+      }
 
     /**
      * Infer the type of the given term(↑)
@@ -76,6 +78,9 @@ object Tactics:
               case None => return proof.InvalidProofTactic(s"Given $tm does not appear in the context")
       }
 
+    /**
+     * Check the type of the given term(↓)
+     */
     def checkProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(localContext: Set[Expr[Prop]], tm: Expr[Ind], ty: Expr[Ind]): proof.ProofTacticJudgement =
       import lib.*
       TacticSubproof {
@@ -93,7 +98,8 @@ object Tactics:
               if bodyProof.isValid then
                 val h1 = lib.have(bodyProof)
                 val resetBot = h1.bot -<< (newBoundVariable ∈ ty1)
-                have((newBoundVariable ∈ ty1 ==> body1 ∈ newBody2) ++<< resetBot) by Restate.from(h1)
+                have((newBoundVariable ∈ ty1 |- body1 ∈ newBody2) ++<< h1.bot) by Weakening(h1)
+                thenHave((newBoundVariable ∈ ty1 ==> body1 ∈ newBody2) ++<< resetBot) by RightImplies
                 thenHave((∀(newBoundVariable ∈ ty1, body1 ∈ newBody2)) ++<< resetBot) by RightForall
                 thenHave((tm ∈ ty) ++<< resetBot) by Tautology.fromLastStep(
                   TAbs of (T1 := ty1, T2 := ty2, e := body)
@@ -145,55 +151,8 @@ object Tactics:
             )
       }
 
+    // Construct equivalence proof for the given two expressions
     def equalProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(ty1: Expr[Ind], ty2: Expr[Ind]): proof.ProofTacticJudgement =
       TacticSubproof {
-        // (ty1, ty2) match
-        //   case (App(a1: Expr[Ind], a2: Expr[Ind]), App(b1: Expr[Ind], b2: Expr[Ind])) =>
-        //     val eq1Proof = equalProof(a1, b1)
-        //     val eq2Proof = equalProof(a2, b2)
-        //     if eq1Proof.isValid && eq2Proof.isValid then have(ty1 === ty2) by Congruence.from(have(eq1Proof), have(eq2Proof))
-        //     else return proof.InvalidProofTactic(s"Failed to construct equivalence proof for Application")
-        //   case (Abs(v1: Expr[Ind], b1: Expr[Ind]), Abs(v2: Expr[Ind], b2: Expr[Ind])) =>
-        //     have(ty1 === ty2) by RightRefl
-        //   case _ =>
-        have(ty1 === ty2) by RightRefl
+        have(ty1 === ty2) by RightRefl.withParameters(ty1 === ty2)
       }
-
-  // object RightRefl extends ProofTactic with ProofSequentTactic:
-  //   def withParameters(using lib: Library, proof: lib.Proof)(fa: F.Expr[F.Prop])(bot: F.Sequent): proof.ProofTacticJudgement = {
-  //     lazy val faK = fa.underlying
-  //     lazy val botK = bot.underlying
-  //     if (!botK.right.exists(_ == faK))
-  //       proof.InvalidProofTactic("Right-hand side of conclusion does not contain φ.")
-  //     else
-  //       faK match {
-  //         case K.Application(K.Application(K.equality, left), right) =>
-  //           if (K.isSame(left, right))
-  //             proof.ValidProofTactic(bot, Seq(K.RightRefl(botK, faK)), Seq())
-  //           else
-  //             proof.InvalidProofTactic("φ is not an instance of reflexivity.")
-  //         case _ => proof.InvalidProofTactic("φ is not an equality.")
-  //       }
-  //   }
-
-  //   def apply(using lib: Library, proof: lib.Proof)(bot: F.Sequent): proof.ProofTacticJudgement = {
-  //     if (bot.right.isEmpty) proof.InvalidProofTactic("Right-hand side of conclusion does not contain an instance of reflexivity.")
-  //     else {
-  //       // go through conclusion to see if you can find an reflexive formula
-  //       val pivot: Option[F.Expr[F.Prop]] = bot.right.find(f =>
-  //         val Eq = F.equality // (F.equality: (F.|->[F.**[F.Expr[F.Ind], 2], F.Expr[F.Prop]]))
-  //         f match {
-  //           case F.App(F.App(e, l), r) =>
-  //             (F.equality) == (e) && l == r // termequality, here it will call Any's type equal function but not Expr
-  //           case _ => false
-  //         }
-  //       )
-
-  //       pivot match {
-  //         case Some(phi) => RightRefl.withParameters(phi)(bot)
-  //         case _ => proof.InvalidProofTactic("Could not infer an equality as pivot from conclusion.")
-  //       }
-
-  //     }
-
-  //   }

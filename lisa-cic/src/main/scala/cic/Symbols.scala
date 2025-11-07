@@ -32,7 +32,7 @@ object Symbols extends lisa.Main:
     .printAs(args => {
       val func = args(0)
       val arg = args(1)
-      s"$func.($arg)"
+      s"($func)($arg)"
     })
 
   // Pattern extractor for the 'app' Shallow Embedding constant.
@@ -48,10 +48,16 @@ object Symbols extends lisa.Main:
   val abs: Constant[Ind >>: (Ind >>: Ind) >>: Ind] = DEF(λ(T, λ(e, { (x, e(x)) | x ∈ T })))
     .printAs(args =>
       val typ = args(0)
-      val body = args(1)
-      s"λ(x: $typ). $body(x)"
+      val (v, body) = args(1) match
+        case Abs(v, b) => (v, b)
+        case _ => (x, args(1))
+      s"λ($v: $typ). $body"
     )
-  def fun(x: Variable[Ind], typ: Expr[Ind], expr: Expr[Ind]) = abs(typ)(λ(x, expr))
+  case class typeAssign(x: Variable[Ind], typ: Expr[Ind])
+  extension (x: Variable[Ind]) {
+    infix def ::(e: Expr[Ind]) = typeAssign(x, e)
+  }
+  def fun(v: typeAssign, b: Expr[Ind]): Expr[Ind] = abs(v.typ)(λ(v.x, b))
 
   // Pattern extractor for the 'abs' Shallow Embedding constant.
   // It allows matching expressions of the form abs(typ)(body) using the pattern Sabs(typ, body).
@@ -77,7 +83,14 @@ object Symbols extends lisa.Main:
         }
       )
     )
+  ).printAs(args =>
+    val ty1 = args(0)
+    val (v, ty2) = args(1) match
+      case Abs(v, body) => (v, body)
+      case _ => (x, args(1))
+    s"Π($v: $ty1). $ty2"
   )
+  def `Π`(v: typeAssign, b: Expr[Ind]): Expr[Ind] = Pi(v.typ)(λ(v.x, b))
 
   // Pattern extractor for the 'Pi' Shallow Embedding constant.
   // It allows matching expressions of the form Pi(T1)(T2) using the pattern SPi(T1, T2).
@@ -90,7 +103,7 @@ object Symbols extends lisa.Main:
         case _ => None
 
   /**
-   * Notation `A ->: B <=> Π(x:A).B`
+   * Notation `A ->: B <=> Π(x :: A). B`
    * where B is independent on x
    */
   extension (a: Expr[Ind]) {
