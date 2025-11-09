@@ -10,7 +10,8 @@ object Examples extends lisa.Main {
   private val Typ = variable[Ind]
   private val Nat, Bool, String = variable[Ind]
   private val A, B, C, T = variable[Ind]
-  private val f, g, x, y, a, s, t = variable[Ind]
+  private val f, g, x, y, a, s, t, n = variable[Ind]
+  private val tru, fls = variable[Ind]
 
   ////////////////////////////////
   //////// Basic Tests ///////////
@@ -36,6 +37,21 @@ object Examples extends lisa.Main {
   val test4_nested_polymorphic_projection = Theorem(
     (a ∈ Nat, b ∈ Nat, Nat ∈ Typ) |-
       app(app(app(fun(T :: Typ, fun(x :: T, fun(y :: T, x))))(Nat))(a))(b) ∈ Nat
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  // Nested Polymorphic function
+  val doublePolyTerm = fun(A :: Typ, fun(B :: Typ, fun(f :: (A ->: B), fun(a :: A, app(f)(a)))))
+  val doublePolyType = Π(A :: Typ, Π(B :: Typ, Π(f :: A ->: B, Π(a :: A, B))))
+  val test5_doublePoly = Theorem(
+    doublePolyTerm ∈ doublePolyType
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+  val test5_doublePolyApp = Theorem(
+    (Nat ∈ Typ, Bool ∈ Typ, n ∈ Nat, tru ∈ Bool) |-
+      app(app(app(app(doublePolyTerm)(Nat))(Bool))(fun(x :: Nat, tru)))(n) ∈ Bool
   ) {
     have(thesis) by Typecheck.prove
   }
