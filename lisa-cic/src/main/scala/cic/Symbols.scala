@@ -1,6 +1,8 @@
 package cic
 
 import lisa.maths.SetTheory.Base.Predef.{*, given}
+import lisa.maths.SetTheory.Functions.Predef.{*}
+import lisa.maths.SetTheory.Cardinal.Predef.{*}
 import lisa.maths.Quantifiers.∃!
 
 /**
@@ -22,18 +24,27 @@ object Symbols extends lisa.Main:
   val T2 = variable[Ind >>: Ind]
 
   // Proposition
-  val Q, R = variable[Ind >>: Prop]
+  val Q, H = variable[Ind >>: Prop]
+
+  // Type Universe
+  val U, U1, U2 = variable[Ind]
+
+  // Enter next level of universe
+  val Next = DEF(λ(U, universeOf(U)))
 
   // x : T <=> x ∈ T
   val typeOf = ∈
 
-  // Type/Term application e1 e2 <=> app(e1)(e2)
-  val app: Constant[Ind >>: Ind >>: Ind] = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
-    .printAs(args => {
-      val func = args(0)
-      val arg = args(1)
-      s"($func)($arg)"
-    })
+  /**
+   * SetTheory.Functions.Predef has the same definition of app, use the library instead
+   * Type/Term application e1 e2 <=> app(e1)(e2)
+   */
+  // val app: Constant[Ind >>: Ind >>: Ind] = DEF(λ(f, λ(x, ε(y, (x, y) ∈ f))))
+  //   .printAs(args => {
+  //     val func = args(0)
+  //     val arg = args(1)
+  //     s"($func)($arg)"
+  //   })
 
   // Pattern extractor for the 'app' Shallow Embedding constant.
   // It allows matching expressions of the form app(func)(arg) using the pattern Sapp(func, arg)

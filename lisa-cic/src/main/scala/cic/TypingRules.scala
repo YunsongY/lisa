@@ -2,6 +2,8 @@ package cic
 import Symbols.*
 import Helper.*
 import lisa.maths.SetTheory.Base.Predef.{*, given}
+import lisa.maths.SetTheory.Functions.Predef.{*}
+import lisa.maths.SetTheory.Cardinal.Predef.{*}
 import lisa.maths.Quantifiers.*
 
 object TypingRules extends lisa.Main {
@@ -46,7 +48,7 @@ object TypingRules extends lisa.Main {
         existPartialApply of (
           P := λ(a, (a, e(a)) === (x, y)),
           Q := λ(a, (a === x) /\ (e(a) === y)),
-          R := λ(a, a ∈ T)
+          H := λ(a, a ∈ T)
         ),
         onePointRule of (x := a, y := x, P := λ(x, x ∈ T /\ (e(x) === y)))
       )
@@ -99,11 +101,23 @@ object TypingRules extends lisa.Main {
   }
 
   /**
-   *    x : T ∈ Γ
-   *    ───────── (T-Var)
-   *    x : T
+   * ────────────────(T-Sort)
+   * U_l : U_{l+1}
    */
-  val TVar = Theorem(e1 ∈ T |- e1 ∈ T) {
+  val TSort = Theorem(
+    U ∈ universeOf(U)
+  ) {
+    have(thesis) by Tautology.from(
+      universeOfIsUniverse of (x := U)
+    )
+  }
+
+  /**
+   *    x : T, T : U_l
+   *    ─────────────── (T-Var)
+   *        x : T
+   */
+  val TVar = Theorem((e1 ∈ T, T ∈ U) |- e1 ∈ T) {
     have(thesis) by Tautology
   }
 
@@ -141,7 +155,7 @@ object TypingRules extends lisa.Main {
         existPartialApply of (
           P := λ(x, x ∈ T1),
           Q := λ(x, (x, e(x)) ∈ (T1 × ⋃({ T2(a) | a ∈ T1 }))),
-          R := λ(x, (x, e(x)) === z)
+          H := λ(x, (x, e(x)) === z)
         ),
         onePointFunctionRule of (P := λ(x, x ∈ (T1 × ⋃({ T2(a) | a ∈ T1 }))), y := z, F := λ(x, (x, e(x))))
       )
@@ -214,12 +228,68 @@ object TypingRules extends lisa.Main {
    * ──────────────────── (T-Conv)
    *       e1 : T'
    */
-
   val TConv = Theorem(
     (e1 ∈ T, T === T1) |- e1 ∈ T1
   ) {
     assumeAll
     have(thesis) by Tautology.from(localSubstitute of (P := λ(x, e1 ∈ x), x := T, y := T1))
+  }
+
+  /**
+   * T1 : U1, x:T1 |- T2(x): U2
+   * ──────────────────────────(T-Form)
+   *   Π(x: T1).T2 : U1 ∪ U2
+   */
+  val TForm = Theorem(
+    (
+      isUniverse(U1),
+      isUniverse(U2),
+      T1 ∈ U1,
+      ∀(x, (x ∈ T1) ==> (T2(x) ∈ U2))
+    ) |-
+      Π(x :: T1, T2(x)) ∈ (U1 ∪ U2)
+  ) {
+    val piTerm = Π(x :: T1, T2(x))
+    assumeAll
+    val nested = have((U1 ⊆ U2) \/ (U2 ⊆ U1)) by Tautology.from(
+      universesAreNested
+    )
+    val case1 = have((U1 ⊆ U2) ==> (piTerm ∈ (U1 ∪ U2))) subproof {
+      assume(U1 ⊆ U2)
+      val unionEq = have((U1 ∪ U2) === U2) by Tautology.from(
+        unionAbsorb of (A := U1, B := U2)
+      )
+      have(T1 ∈ U2) by Tautology.from(
+        Subset.membership of (x := U1, y := U2, z := T1)
+      )
+      thenHave(piTerm ∈ U2) by Tautology.fromLastStep(
+        universePiClosure of (U := U2)
+      )
+      thenHave(piTerm ∈ (U1 ∪ U2)) by Substitute(unionEq)
+    }
+    val case2 = have((U2 ⊆ U1) ==> (piTerm ∈ (U1 ∪ U2))) subproof {
+      assume(U2 ⊆ U1)
+      val unionEq = have((U1 ∪ U2) === U1) by Tautology.from(
+        unionAbsorb of (A := U2, B := U1),
+        Union.commutativity of (x := U1, y := U2),
+        equalTransitivityApplication of (x := (U1 ∪ U2), y := (U2 ∪ U1), z := U1)
+      )
+      val t1InU1 = have(T1 ∈ U1) by Tautology.from(
+        Subset.membership of (x := U2, y := U1, z := T1)
+      )
+      have(∀(x, (x ∈ T1) ==> (T2(x) ∈ U1))) subproof {
+        have(∀(x, (x ∈ T1) ==> (T2(x) ∈ U2))) by Hypothesis
+        thenHave(x ∈ T1 ==> (T2(x) ∈ U2)) by InstantiateForall(x)
+        thenHave(x ∈ T1 ==> (T2(x) ∈ U1)) by Tautology.fromLastStep(Subset.membership of (x := U2, y := U1, z := T2(x)))
+        thenHave(thesis) by RightForall
+      }
+      thenHave(piTerm ∈ U1) by Tautology.fromLastStep(
+        universePiClosure of (U := U1),
+        t1InU1
+      )
+      thenHave(piTerm ∈ (U1 ∪ U2)) by Substitute(unionEq)
+    }
+    have(thesis) by Tautology.from(nested, case1, case2)
   }
 
   /**

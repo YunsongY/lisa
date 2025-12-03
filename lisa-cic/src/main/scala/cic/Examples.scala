@@ -4,6 +4,7 @@ import Symbols.*
 import Tactics.*
 import TypingRules.*
 import lisa.maths.SetTheory.Base.Predef.{*, given}
+import lisa.maths.SetTheory.Functions.Predef.{*}
 import cic.Tactics.Typecheck
 
 object Examples extends lisa.Main {
@@ -94,4 +95,5 @@ object Examples extends lisa.Main {
   // val test_SelfApp = Theorem(Typ ∈ Typ |- app(app(PolyId)(PolyIdType))(PolyId) ∈ PolyIdType) {
   //   have(thesis) by Typecheck.prove
   // }
+
 }
