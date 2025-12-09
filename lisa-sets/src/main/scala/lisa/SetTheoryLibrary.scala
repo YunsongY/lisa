@@ -260,8 +260,8 @@ object SetTheoryLibrary extends lisa.utils.prooflib.Library {
   functions.foreach(s => addSymbol(s))
   addSymbol(∅)
 
-  private val x, y, z = variable[Ind]
-  private val A, B, U = variable[Ind]
+  private val x, y, z, a, b = variable[Ind]
+  private val A, B, U, G, I = variable[Ind]
   private val φ = variable[Ind >>: Prop]
   private val P = variable[Ind >>: Ind >>: Prop]
 
@@ -400,6 +400,7 @@ object SetTheoryLibrary extends lisa.utils.prooflib.Library {
    * 3. U is closed under Pairing
    * 4. U is closed under Union
    * 5. U is closed under Power Set
+   * 6. U is closed under Replacement
    */
   final val tarskiAxiom: AXIOM = Axiom(
     ∀(
@@ -414,8 +415,16 @@ object SetTheoryLibrary extends lisa.utils.prooflib.Library {
           // 3. Union: y ∈ U => ⋃y ∈ U
           (∀(y, (y ∈ U) ==> (⋃(y) ∈ U))) /\
           // 4. Power Set: y ∈ U => P(y) ∈ U
-          (∀(y, (y ∈ U) ==> (𝒫(y) ∈ U)))
-        // Actually, here we need to add replacement closure
+          (∀(y, (y ∈ U) ==> (𝒫(y) ∈ U))) /\
+          // 5. Replacement closure
+          (∀(
+            A,
+            (A ∈ U) ==> ∀(
+              G,
+              ∀(a, a ∈ A ==> ∃(b, (b ∈ U) /\ (pair(a, b) ∈ G) /\ (∀(z, ((z ∈ U) /\ (pair(a, z) ∈ G)) ==> (z === b))))) ==>
+                ∃(I, (I ∈ U) /\ ∀(b, b ∈ I <=> ∃(a, (a ∈ A) /\ (pair(a, b) ∈ G))))
+            )
+          ))
       )
     )
   )
@@ -468,6 +477,8 @@ object SetTheoryLibrary extends lisa.utils.prooflib.Library {
   ///////////////
 
   def unorderedPair(x: Expr[Ind], y: Expr[Ind]): Expr[Ind] = App(App(unorderedPair, x), y)
+
+  private def pair(x: Expr[Ind], y: Expr[Ind]): Expr[Ind] = unorderedPair(unorderedPair(x, x), unorderedPair(x, y))
 
   /*
   private val db = HintDatabase.empty
