@@ -107,9 +107,7 @@ object TypingRules extends lisa.Main {
   val TSort = Theorem(
     U ∈ universeOf(U)
   ) {
-    have(thesis) by Tautology.from(
-      universeOfIsUniverse of (x := U)
-    )
+    have(thesis) by Tautology.from(universeOfIsUniverse of (x := U))
   }
 
   /**

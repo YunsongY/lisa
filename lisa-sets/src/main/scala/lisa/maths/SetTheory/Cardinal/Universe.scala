@@ -321,7 +321,7 @@ object Universe extends lisa.Main:
    * 2. It contains `x`.
    */
   val universeOfIsUniverse = Theorem(
-    ∀(x, isUniverse(universeOf(x)) /\ (x ∈ universeOf(x)))
+    isUniverse(universeOf(x)) /\ (x ∈ universeOf(x))
   ) {
     have(∀(x, ∃(U, (x ∈ U) /\ isUniverse(U)))) by Tautology.from(universeExistence)
     thenHave(∃(U, (x ∈ U) /\ isUniverse(U))) by InstantiateForall(x)
@@ -330,7 +330,7 @@ object Universe extends lisa.Main:
     ) by Tautology.fromLastStep(existsEpsilon of (x := U, P := λ(U, (x ∈ U) /\ isUniverse(U))))
     thenHave(x ∈ universeOf(x) /\ isUniverse(ε(U, (x ∈ U) /\ isUniverse(U)))) by Substitute(universeOf.definition)
     thenHave(x ∈ universeOf(x) /\ isUniverse(universeOf(x))) by Substitute(universeOf.definition)
-    thenHave(thesis) by RightForall
+    thenHave(thesis) by Restate
   }
 
   /**

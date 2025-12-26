@@ -22,16 +22,6 @@ object UniverseRank extends lisa.Main:
    */
   val level = DEF(λ(U, ε(k, ∀(x, x ∈ k <=> (x ∈ U /\ ordinal(x))))))
 
-  // /**
-  //  * Axiom/Theorem: Bridge between Universes and V-Hierarchy.
-  //  * Every universe U is equal to V(k) where k is its level.
-  //  */
-  // val universeStructureTheorem = Theorem(
-  //   isUniverse(U) ==> (U === V(level(U)))
-  // ) {
-  //   sorry
-  // }
-
   /**
    * The level of a Universe is an Ordinal (actually an Inaccessible Cardinal).
    */
