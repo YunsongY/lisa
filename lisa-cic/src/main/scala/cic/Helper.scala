@@ -3,7 +3,7 @@ package cic
 import Symbols.*
 import lisa.maths.SetTheory.Base.Predef.{*, given}
 import lisa.maths.SetTheory.Cardinal.Predef.{*}
-import lisa.maths.SetTheory.Functions.Predef.{*}
+import lisa.maths.SetTheory.Functions.Predef.*
 import lisa.maths.Quantifiers.*
 
 /**
@@ -87,18 +87,168 @@ object Helper extends lisa.Main {
   }
 
   /**
+   * Theorem --- Universe Family Union Closure.
+   *
+   * Given an index set A ∈ U, and a family of sets T2(x) where each T2(x) ∈ U,
+   * the union of this family ⋃ { T2(x) | x ∈ A } is also in U.
    */
   val universeFamilyUnionClosure = Theorem(
     (isUniverse(U), A ∈ U, ∀(x, x ∈ A ==> T2(x) ∈ U)) |- ⋃({ T2(x) | x ∈ A }) ∈ U
   ) {
-    sorry
+    assumeAll
+    val stmt = have(∀(x, x ∈ A ==> T2(x) ∈ U)) by Hypothesis
+    val G = { (x, T2(x)) | x ∈ A }
+    val relationProp = have(relationBetween(G)(A)(U)) subproof {
+      have(z ∈ G ==> z ∈ (A × U)) subproof {
+        assume(z ∈ G)
+        have((x ∈ A /\ ((x, T2(x)) === z)) |- z ∈ (A × U)) subproof {
+          assume(x ∈ A)
+          assume((x, T2(x)) === z)
+          val eqFormula = have((x, T2(x)) === z) by Hypothesis
+          have(T2(x) ∈ U) by InstantiateForall(x)(stmt)
+          thenHave((x, T2(x)) ∈ (A × U)) by Tautology.fromLastStep(CartesianProduct.membershipSufficientCondition of (y := T2(x), B := U))
+          thenHave(thesis) by Substitute(eqFormula)
+        }
+        thenHave(∃(x, x ∈ A /\ ((x, T2(x)) === z)) |- z ∈ (A × U)) by LeftExists
+        thenHave(thesis) by Tautology.fromLastStep(Replacement.membership of (y := z, F := λ(x, (x, T2(x)))))
+      }
+      thenHave(∀(z, z ∈ G ==> z ∈ (A × U))) by RightForall
+      thenHave(G ⊆ (A × U)) by Tautology.fromLastStep(subsetAxiom of (x := G, y := (A × U)))
+      thenHave(thesis) by Substitute(relationBetween.definition of (R := G, X := A, Y := U))
+    }
+    have(a ∈ A ==> ∃!(y, (a, y) ∈ G)) subproof {
+      assume(a ∈ A)
+      val existence = have((a, T2(a)) ∈ G) subproof {
+        have(a ∈ A /\ ((a, T2(a)) === (a, T2(a)))) by Tautology
+        thenHave(∃(x, x ∈ A /\ ((x, T2(x)) === (a, T2(a))))) by RightExists
+        thenHave(thesis) by Tautology.fromLastStep(
+          Replacement.membership of (y := (a, T2(a)), F := λ(x, (x, T2(x))))
+        )
+      }
+      have((a, y) ∈ G ==> (y === T2(a))) subproof {
+        assume((a, y) ∈ G)
+        have((x ∈ A /\ ((a, y) === (x, T2(x)))) ==> (y === T2(a))) subproof {
+          assume((x ∈ A /\ ((a, y) === (x, T2(x)))))
+          val both = have((a === x) /\ (y === T2(x))) by Tautology.from(Pair.extensionality of (b := y, c := x, d := T2(x)))
+          val s1 = have(x === a) by Tautology.from(both)
+          have(y === T2(x)) by Tautology.from(both)
+          thenHave(y === T2(a)) by Substitute(s1)
+          thenHave(thesis) by Restate
+        }
+        thenHave(∀(x, (x ∈ A /\ ((a, y) === (x, T2(x)))) ==> (y === T2(a)))) by RightForall
+        thenHave(thesis) by Tautology.fromLastStep(
+          existentialImplicationDistribution of (z := x, P := λ(x, (x ∈ A /\ ((a, y) === (x, T2(x))))), Q := λ(x, y === T2(a))),
+          Replacement.membership of (y := (a, y), F := λ(x, (x, T2(x)))),
+          closedFormulaExistential of (p := (y === T2(a)))
+        )
+      }
+      val uniqueness = thenHave(∀(y, (a, y) ∈ G ==> (y === T2(a)))) by RightForall
+      have((a, T2(a)) ∈ G /\ ∀(y, (a, y) ∈ G ==> (y === T2(a)))) by Tautology.from(existence, uniqueness)
+      thenHave(∃(z, (a, z) ∈ G /\ ∀(y, (a, y) ∈ G ==> (y === z)))) by RightExists
+      thenHave(∃!(z, (a, z) ∈ G)) by Substitute(∃!.definition of (P := λ(z, (a, z) ∈ G)))
+      thenHave(thesis) by Restate
+    }
+    thenHave(∀(a, a ∈ A ==> ∃!(y, (a, y) ∈ G))) by RightForall
+    val functionalProp = thenHave(∀(x, x ∈ A ==> ∃!(y, (x, y) ∈ G))) by Restate
+    val rangeEq = have(range(G) === { T2(x) | x ∈ A }) subproof {
+      have(y ∈ range(G) <=> y ∈ { T2(x) | x ∈ A }) subproof {
+        val rhs = { T2(x) | x ∈ A }
+        val `==>` = have(y ∈ range(G) ==> y ∈ rhs) subproof {
+          assume(y ∈ range(G))
+          thenHave(y ∈ { snd(z) | z ∈ G }) by Substitute(range.definition of (R := G))
+          val s = thenHave(∃(z ∈ G, snd(z) === y)) by Tautology.fromLastStep(Replacement.membership of (F := λ(x, snd(x)), A := G, x := z))
+          have((z ∈ G /\ (snd(z) === y)) |- y ∈ rhs) subproof {
+            assume(z ∈ G /\ (snd(z) === y))
+            val inners = have(∃(x ∈ A, (x, T2(x)) === z)) by Tautology.from(Replacement.membership of (F := λ(x, (x, T2(x))), y := z))
+            have((x ∈ A /\ ((x, T2(x)) === z)) |- y ∈ rhs) subproof {
+              assume(x ∈ A /\ ((x, T2(x)) === z))
+              val pairEq = have((x, T2(x)) === z) by Tautology
+              have(snd(z) === y) by Tautology
+              thenHave(snd(x, T2(x)) === y) by Substitute(pairEq)
+              val yEq = thenHave(y === T2(x)) by Tautology.fromLastStep(
+                Pair.pairSnd of (y := T2(x)),
+                equalTransitivityApplication of (x := y, y := snd(x, T2(x)), z := T2(x))
+              )
+              have(x ∈ A /\ (T2(x) === T2(x))) by Tautology
+              thenHave(∃(a ∈ A, T2(a) === T2(x))) by RightExists
+              thenHave(T2(x) ∈ rhs) by Tautology.fromLastStep(Replacement.membership of (y := T2(x), F := λ(a, T2(a))))
+              thenHave(thesis) by Substitute(yEq)
+            }
+            thenHave(∃(x ∈ A, (x, T2(x)) === z) |- y ∈ rhs) by LeftExists
+            thenHave(thesis) by Tautology.fromLastStep(inners)
+          }
+          thenHave(∃(z ∈ G, snd(z) === y) |- y ∈ rhs) by LeftExists
+          thenHave(thesis) by Tautology.fromLastStep(s)
+        }
+        val `<==` = have(y ∈ rhs ==> y ∈ range(G)) subproof {
+          assume(y ∈ rhs)
+          have((a ∈ A /\ (y === T2(a))) ==> y ∈ range(G)) subproof {
+            assume(a ∈ A /\ (y === T2(a)))
+            val yEq = have(y === T2(a)) by Tautology
+            have(a ∈ A /\ ((a, y) === (a, y))) by Tautology
+            thenHave(a ∈ A /\ ((a, y) === (a, T2(a)))) by Substitute(yEq)
+            thenHave(∃(z ∈ A, (a, y) === (z, T2(z)))) by RightExists
+            thenHave((a, y) ∈ G /\ (snd(a, y) === y)) by Tautology.fromLastStep(
+              Replacement.membership of (y := (a, y), F := λ(z, (z, T2(z)))),
+              Pair.pairSnd of (x := a)
+            )
+            thenHave(∃(z ∈ G, snd(z) === y)) by RightExists
+            thenHave(y ∈ { snd(z) | z ∈ G }) by Tautology.fromLastStep(Replacement.membership of (A := G, F := snd))
+            thenHave(y ∈ range(G)) by Substitute(range.definition of (R := G))
+            thenHave(thesis) by Restate
+          }
+          thenHave(∀(a, (a ∈ A /\ (y === T2(a))) ==> y ∈ range(G))) by RightForall
+          thenHave(thesis) by Tautology.fromLastStep(
+            existentialImplicationDistribution of (z := a, P := λ(a, (a ∈ A /\ (y === T2(a)))), Q := λ(a, y ∈ range(G))),
+            Replacement.membership of (F := T2),
+            closedFormulaExistential of (p := y ∈ range(G))
+          )
+        }
+        have(thesis) by Tautology.from(`==>`, `<==`)
+      }
+      thenHave(thesis) by Extensionality
+    }
+    have(relationBetween(G)(A)(U) /\ ∀(x, x ∈ A ==> ∃!(y, (x, y) ∈ G))) by Tautology.from(relationProp, functionalProp)
+    thenHave(functionBetween(G)(A)(U)) by Substitute(functionBetween.definition of (f := G, B := U))
+    thenHave(range(G) ∈ U) by Tautology.fromLastStep(universeReplacementClosure of (f := G))
+    thenHave({ T2(x) | x ∈ A } ∈ U) by Substitute(rangeEq)
+    thenHave(thesis) by Tautology.fromLastStep(universeUnionClosure of (x := { T2(x) | x ∈ A }))
   }
 
+  /**
+   * Theorem --- Universe Closure under Dependent Product (Pi Types).
+   *
+   * If the domain `T1` is in `U`, and for every element `x` in `T1`, the codomain type
+   * `T2(x)` is also in `U`, then the set of all dependent functions `Π(x:T1).T2(x)`
+   * is an element of `U`.
+   */
   val universePiClosure = Theorem(
     (isUniverse(U), T1 ∈ U, ∀(x, x ∈ T1 ==> T2(x) ∈ U)) |-
       Pi(T1)(T2) ∈ U
   ) {
-    sorry
+    assumeAll
+    val boundSet = 𝒫(T1 × ⋃({ T2(x) | x ∈ T1 }))
+    val piSet = {
+      f ∈ boundSet |
+        (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\
+        (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a)))))
+    }
+    have(piSet ∈ U) by Tautology.from(
+      universeFamilyUnionClosure of (A := T1),
+      universeProductClosure of (A := T1, B := ⋃({ T2(x) | x ∈ T1 })),
+      universePowerSetClosure of (x := T1 × ⋃({ T2(x) | x ∈ T1 })),
+      Comprehension.subset of (
+        x := f,
+        y := boundSet,
+        φ := λ(
+          f,
+          (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\
+            (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a)))))
+        )
+      ),
+      universeSubsetClosure of (A := boundSet, B := piSet)
+    )
+    thenHave(thesis) by Substitute(Pi.definition)
   }
 
   /**

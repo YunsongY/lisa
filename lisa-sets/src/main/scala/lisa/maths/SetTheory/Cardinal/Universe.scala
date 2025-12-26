@@ -4,17 +4,7 @@ import lisa.maths.SetTheory.Ordinals.Ordinal.*
 import lisa.maths.SetTheory.Base.Predef.{*, given}
 import lisa.maths.SetTheory.Functions.Predef.*
 import lisa.maths.Quantifiers.*
-
 import Cardinal.*
-import lisa.utils.prooflib.SimpleDeducedSteps.InstantiateForall
-import lisa.utils.prooflib.SimpleDeducedSteps.InstantiateForall
-import lisa.utils.prooflib.SimpleDeducedSteps.InstantiateForall
-import lisa.maths.SetTheory.Base.CartesianProduct
-import lisa.maths.SetTheory.Base.CartesianProduct
-import lisa.maths.SetTheory.Base.CartesianProduct.cartesianProduct
-import lisa.maths.SetTheory.Base.Union
-import lisa.maths.SetTheory.Base.Singleton.singleton
-import lisa.SetTheoryLibrary.subsetAxiom
 
 object Universe extends lisa.Main:
   private val U, U1, G, I = variable[Ind]
@@ -392,9 +382,13 @@ object Universe extends lisa.Main:
    * If A ∈ U and f: A -> U, then range(f) ∈ U.
    */
   val universeReplacementClosure = Theorem(
-    isUniverse(U) |- ∀(A, (A ∈ U) ==> ∀(f, (f :: (A, U)) ==> (range(f) ∈ U)))
+    isUniverse(U) |- (A ∈ U) ==> ((f :: (A, U)) ==> (range(f) ∈ U))
   ) {
-    have(thesis) by Tautology.from(isUniverse.definition)
+    have(isUniverse(U) |- ∀(A, (A ∈ U) ==> ∀(f, (f :: (A, U)) ==> (range(f) ∈ U)))) by Tautology.from(isUniverse.definition)
+    thenHave(isUniverse(U) |- (A ∈ U) ==> ∀(f, (f :: (A, U)) ==> (range(f) ∈ U))) by InstantiateForall(A)
+    thenHave((isUniverse(U), (A ∈ U)) |- ∀(f, (f :: (A, U)) ==> (range(f) ∈ U))) by Restate
+    thenHave((isUniverse(U), (A ∈ U)) |- (f :: (A, U)) ==> (range(f) ∈ U)) by InstantiateForall(f)
+    thenHave(thesis) by Restate
   }
 
   /**
@@ -444,4 +438,19 @@ object Universe extends lisa.Main:
     }
     thenHave((A × B) ∈ 𝒫(𝒫(𝒫(A ∪ B)))) by Tautology.fromLastStep(PowerSet.membership of (x := A × B, y := 𝒫(𝒫(A ∪ B))))
     thenHave(thesis) by Tautology.fromLastStep(tricePowerInU, Subset.membership of (x := 𝒫(𝒫(𝒫(A ∪ B))), y := U, z := (A × B)))
+  }
+
+  /**
+   * Theorem --- Universe Subset Closure.
+   *
+   * If A ∈ U and B ⊆ A, then B ∈ U.
+   */
+  val universeSubsetClosure = Theorem(
+    (isUniverse(U), A ∈ U, B ⊆ A) |- B ∈ U
+  ) {
+    assumeAll
+    have(𝒫(A) ∈ U) by Tautology.from(universePowerSetClosure of (x := A))
+    val cond = have(𝒫(A) ⊆ U) by Tautology.from(universeTransitivity of (x := 𝒫(A)), lastStep)
+    have(B ∈ 𝒫(A)) by Tautology.from(PowerSet.membership of (x := B, y := A))
+    thenHave(thesis) by Tautology.fromLastStep(cond, Subset.membership of (x := 𝒫(A), y := U, z := B))
   }

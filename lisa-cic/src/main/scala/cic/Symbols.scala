@@ -29,6 +29,9 @@ object Symbols extends lisa.Main:
   // Type Universe
   val U, U1, U2 = variable[Ind]
 
+  // Proposition
+  val p = variable[Prop]
+
   // Enter next level of universe
   val Next = DEF(λ(U, universeOf(U)))
 
