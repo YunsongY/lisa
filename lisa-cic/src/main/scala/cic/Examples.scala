@@ -5,13 +5,15 @@ import Tactics.*
 import TypingRules.*
 import lisa.maths.SetTheory.Base.Predef.{*, given}
 import lisa.maths.SetTheory.Functions.Predef.{*}
+import lisa.maths.SetTheory.Cardinal.Predef.{isUniverse}
+import cic.Tactics.Typecheck
 import cic.Tactics.Typecheck
 
 object Examples extends lisa.Main {
   private val Typ = variable[Ind]
   private val Nat, Bool, String = variable[Ind]
   private val A, B, C, T = variable[Ind]
-  private val f, g, x, y, a, s, t, n = variable[Ind]
+  private val f, g, x, y, a, s, t, n, m = variable[Ind]
   private val tru, fls = variable[Ind]
 
   ////////////////////////////////
@@ -84,16 +86,108 @@ object Examples extends lisa.Main {
   }
 
   /**
-   * Test2: Polymorphic Identity
+   * Test 2: Church Encodings (Complex Logic)
    */
-  val PolyId = fun(T :: Typ, fun(t :: T, t))
-  val PolyIdType = Π(T :: Typ, T ->: T)
-  val test = Theorem(Typ ∈ Typ |- PolyId ∈ PolyIdType) {
+  // Church Bool Type: Π(A: Typ). A -> A -> A
+  val CBool = Π(A :: Typ, A ->: A ->: A)
+
+  // Church True: λA. λx. λy. x
+  val CTrue = fun(A :: Typ, fun(x :: A, fun(y :: A, x)))
+
+  // Church False: λA. λx. λy. y
+  val CFalse = fun(A :: Typ, fun(x :: A, fun(y :: A, y)))
+
+  // Verify True has type Bool
+  val test_ChurchTrue = Theorem(
+    isUniverse(Typ) |- CTrue ∈ CBool
+  ) {
     have(thesis) by Typecheck.prove
   }
-  // The following one will fail since without form-Rule
-  // val test_SelfApp = Theorem(Typ ∈ Typ |- app(app(PolyId)(PolyIdType))(PolyId) ∈ PolyIdType) {
-  //   have(thesis) by Typecheck.prove
-  // }
 
+  // NOT = λb: Bool. λA: Typ. λx: A. λy: A. b A y x
+  // This tests passing a "Function" (b) as an argument and applying it
+  val CNot = fun(b :: CBool, fun(A :: Typ, fun(x :: A, fun(y :: A, app(app(app(b)(A))(y))(x)))))
+
+  // Verify NOT True == False (Type level check)
+  val test_ChurchLogic = Theorem(
+    isUniverse(Typ) |- app(CNot)(CTrue) ∈ CBool
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  /**
+   * Test 3: Church Number (Complex Logic)
+   */
+  val CNat = Π(A :: Typ, (A ->: A) ->: A ->: A)
+  val zero = fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, x)))
+  val succ = fun(n :: CNat, fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, app(f)(app(app(app(n)(A))(f))(x))))))
+
+  val test_Zero = Theorem(isUniverse(Typ) |- zero ∈ CNat) {
+    have(thesis) by Typecheck.prove
+  }
+
+  // 1 = succ(0)
+  val one = app(succ)(zero)
+  val test_One = Theorem(isUniverse(Typ) |- one ∈ CNat) {
+    have(thesis) by Typecheck.prove
+  }
+
+  // Church Addition: λn. λm. λA. λf. λx. n A f (m A f x)
+  val plus = fun(n :: CNat, fun(m :: CNat, fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, app(app(app(n)(A))(f))(app(app(app(m)(A))(f))(x)))))))
+
+  // 1 + 0 = 1
+  val test_Add = Theorem(isUniverse(Typ) |- app(app(plus)(one))(zero) ∈ CNat) {
+    have(thesis) by Typecheck.prove
+  }
+
+  /**
+   * Test4: Polymorphic Identity(Hierachy Promotion)
+   */
+  val Typ2 = getUniverse(2)
+  val PolyId_0 = fun(X :: Typ, fun(x :: X, x))
+  val PolyIdType_0 = Π(T :: Typ, T ->: T)
+  val PolyId_1 = fun(X :: Typ2, fun(x :: X, x))
+  val PolyIdType_1 = Π(X :: Typ2, X ->: X)
+  val testBasic = Theorem(PolyId_0 ∈ PolyIdType_0) {
+    have(thesis) by Typecheck.prove
+  }
+  val testPoly = Theorem(PolyId_1 ∈ PolyIdType_1) {
+    have(thesis) by Typecheck.prove
+  }
+  val testPolyPrime = Theorem(isUniverse(Typ) |- app(PolyId_1)(PolyIdType_0) ∈ Π(x :: PolyIdType_0, PolyIdType_0)) {
+    have(thesis) by Typecheck.prove
+  }
+  val test_SelfApp = Theorem(isUniverse(Typ) |- app(app(PolyId_1)(PolyIdType_0))(PolyId_0) ∈ PolyIdType_0) {
+    have(thesis) by Typecheck.prove
+  }
+
+  /**
+   * Test 5: Dependent Subsumption
+   */
+  val z = variable[Ind]
+  val SuperId = fun(X :: Typ2, fun(x :: X, x))
+  val test_Grandfather = Theorem(
+    (isUniverse(Typ), Nat ∈ Typ, z ∈ Nat) |-
+      app(app(SuperId)(Nat))(z) ∈ Nat
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  /**
+   * Test 6: Galaxy Bridge(Multi-Level Dependency)
+   */
+  val Typ3 = getUniverse(3)
+  val Typ4 = getUniverse(4)
+  val GalaxyBridgeTerm = fun(A :: Typ, fun(B :: Typ2, fun(C :: Typ3, A ->: B ->: C)))
+  val GalaxyBridgeType = Π(A :: Typ, Π(B :: Typ2, Π(C :: Typ3, Typ3)))
+  val test_Galaxy_term = Theorem(
+    isUniverse(Typ) |- GalaxyBridgeTerm ∈ GalaxyBridgeType
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+  val test_Galaxy_Type_Level = Theorem(
+    isUniverse(Typ) |- GalaxyBridgeType ∈ Typ4
+  ) {
+    have(thesis) by Typecheck.prove
+  }
 }

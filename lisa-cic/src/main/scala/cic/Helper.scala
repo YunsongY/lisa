@@ -9,9 +9,7 @@ import lisa.maths.Quantifiers.*
 /**
  * This file defines some useful helper theorem used in the typing rules
  */
-
-object Helper extends lisa.Main {
-
+object Helper extends lisa.Main:
   /**
    * Predicate Logic Lemma: Distributes a universal implication (∀)
    * over an existential conjunction (∃).
@@ -273,4 +271,42 @@ object Helper extends lisa.Main {
       Subset.antisymmetry of (x := (A ∪ B), y := B)
     )
   }
-}
+
+  /**
+   * Theorem --- If A is a subset of B, and B equals to C, then the union of A and B is C.
+   *
+   * (A ⊆ B, B === C) |- (A ∪ B) === C
+   */
+  val unionAbsorbVariant = Theorem(
+    (A ⊆ C, B === C) |- (A ∪ B) === C
+  ) {
+    assumeAll
+    have((A ∪ C) === C) by Tautology.from(unionAbsorb of (B := C))
+    thenHave(thesis) by Congruence
+  }
+
+  /**
+   * Theorem --- unionEqual
+   */
+  val unionEqual = Theorem(
+    (A === C, B === C) |- (A ∪ B) === C
+  ) {
+    assumeAll
+    have(A ⊆ A) by Tautology.from(Subset.reflexivity of (x := A))
+    thenHave(A ⊆ C) by Congruence
+    thenHave(thesis) by Tautology.fromLastStep(unionAbsorbVariant)
+  }
+
+  /**
+   * Theorem --- set A is subset of its universe
+   *
+   * A ⊆ universeOf(A)
+   */
+  val subsetOfUniverse = Theorem(
+    A ⊆ universeOf(A)
+  ) {
+    have(thesis) by Tautology.from(
+      universeOfIsUniverse of (x := A),
+      universeTransitivity of (x := A, U := universeOf(A))
+    )
+  }

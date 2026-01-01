@@ -234,6 +234,18 @@ object TypingRules extends lisa.Main {
   }
 
   /**
+   *    e1: T,  T <= T'
+   * ──────────────────── (T-ConvAdv)
+   *       e1 : T'
+   */
+  val TConvAdv = Theorem(
+    (e1 ∈ T, T ⊆ T1) |- e1 ∈ T1
+  ) {
+    assumeAll
+    have(thesis) by Tautology.from(Subset.membership of (z := e1, x := T, y := T1))
+  }
+
+  /**
    * T1 : U1, x:T1 |- T2(x): U2
    * ──────────────────────────(T-Form)
    *   Π(x: T1).T2 : U1 ∪ U2

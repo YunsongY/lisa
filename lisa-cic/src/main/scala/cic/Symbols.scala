@@ -39,6 +39,15 @@ object Symbols extends lisa.Main:
   val typeOf = ∈
 
   /**
+   * Universe(Type) level
+   */
+  val Typ = variable[Ind]
+  def getUniverse(n: Int): Expr[Ind] = {
+    if (n == 1) then Typ
+    else universeOf(getUniverse(n - 1))
+  }
+
+  /**
    * SetTheory.Functions.Predef has the same definition of app, use the library instead
    * Type/Term application e1 e2 <=> app(e1)(e2)
    */
@@ -114,6 +123,15 @@ object Symbols extends lisa.Main:
         // We match against the specific Constant 'Pi' being applied twice: App(App(Pi, T1), T2)
         case App(App(`Pi`, t1), t2) =>
           Some((t1.asInstanceOf[Expr[Ind]], t2.asInstanceOf[Expr[Ind >>: Ind]]))
+        case _ => None
+
+  // Pattern extractor for the `⊆` Shallow Embedding constant.
+  // It allows matching expressions of the form ⊆(t1)(t2) using the pattern SUnion(t1, t2)
+  object SUnion:
+    def unapply(e: Expr[?]): Option[(Expr[Ind], Expr[Ind])] =
+      e match
+        case App(App(`∪`, t1), t2) =>
+          Some((t1.asInstanceOf[Expr[Ind]], t2.asInstanceOf[Expr[Ind]]))
         case _ => None
 
   /**
