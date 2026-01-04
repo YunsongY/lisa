@@ -310,3 +310,53 @@ object Helper extends lisa.Main:
       universeTransitivity of (x := A, U := universeOf(A))
     )
   }
+
+  /**
+   * Theorem --- If U1 U2 are universes, and U1 ⊆ U2(hiearchy) then Π(x :: T1, T2(x)) ∈ U2
+   *
+   * one direction case in TForm theorem
+   */
+
+  val universeHierarchyPiClosureLeft = Theorem(
+    (
+      isUniverse(U1),
+      isUniverse(U2),
+      U1 ⊆ U2,
+      T1 ∈ U1,
+      ∀(x, (x ∈ T1) ==> (T2(x) ∈ U2))
+    ) |- Π(x :: T1, T2(x)) ∈ U2
+  ) {
+    assumeAll
+    val piTerm = Π(x :: T1, T2(x))
+    have(thesis) by Tautology.from(
+      universePiClosure of (U := U2),
+      Subset.membership of (x := U1, y := U2, z := T1)
+    )
+  }
+
+  /**
+   * Theorem --- If U1 U2 are universes, and U2 ⊆ U1(hiearchy) then Π(x :: T1, T2(x)) ∈ U1
+   *
+   * the one direction case in TForm theorem
+   */
+  val universeHierarchyPiClosureRight = Theorem(
+    (
+      isUniverse(U1),
+      isUniverse(U2),
+      U2 ⊆ U1,
+      T1 ∈ U1,
+      ∀(x, (x ∈ T1) ==> (T2(x) ∈ U2))
+    ) |- Π(x :: T1, T2(x)) ∈ U1
+  ) {
+    assumeAll
+    val piTerm = Π(x :: T1, T2(x))
+    have(∀(x, (x ∈ T1) ==> (T2(x) ∈ U1))) subproof {
+      have(∀(x, (x ∈ T1) ==> (T2(x) ∈ U2))) by Hypothesis
+      thenHave(x ∈ T1 ==> (T2(x) ∈ U2)) by InstantiateForall(x)
+      thenHave(x ∈ T1 ==> (T2(x) ∈ U1)) by Tautology.fromLastStep(Subset.membership of (x := U2, y := U1, z := T2(x)))
+      thenHave(thesis) by RightForall
+    }
+    thenHave(thesis) by Tautology.fromLastStep(
+      universePiClosure of (U := U1)
+    )
+  }

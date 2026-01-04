@@ -11,6 +11,9 @@ import cic.Tactics.Typecheck
 
 object Examples extends lisa.Main {
   private val Typ = variable[Ind]
+  private val Typ2 = getUniverse(2)
+  private val Typ3 = getUniverse(3)
+  private val Typ4 = getUniverse(4)
   private val Nat, Bool, String = variable[Ind]
   private val A, B, C, T = variable[Ind]
   private val f, g, x, y, a, s, t, n, m = variable[Ind]
@@ -143,7 +146,6 @@ object Examples extends lisa.Main {
   /**
    * Test4: Polymorphic Identity(Hierachy Promotion)
    */
-  val Typ2 = getUniverse(2)
   val PolyId_0 = fun(X :: Typ, fun(x :: X, x))
   val PolyIdType_0 = Π(T :: Typ, T ->: T)
   val PolyId_1 = fun(X :: Typ2, fun(x :: X, x))
@@ -176,8 +178,6 @@ object Examples extends lisa.Main {
   /**
    * Test 6: Galaxy Bridge(Multi-Level Dependency)
    */
-  val Typ3 = getUniverse(3)
-  val Typ4 = getUniverse(4)
   val GalaxyBridgeTerm = fun(A :: Typ, fun(B :: Typ2, fun(C :: Typ3, A ->: B ->: C)))
   val GalaxyBridgeType = Π(A :: Typ, Π(B :: Typ2, Π(C :: Typ3, Typ3)))
   val test_Galaxy_term = Theorem(

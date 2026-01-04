@@ -269,11 +269,8 @@ object TypingRules extends lisa.Main {
       val unionEq = have((U1 ∪ U2) === U2) by Tautology.from(
         unionAbsorb of (A := U1, B := U2)
       )
-      have(T1 ∈ U2) by Tautology.from(
-        Subset.membership of (x := U1, y := U2, z := T1)
-      )
-      thenHave(piTerm ∈ U2) by Tautology.fromLastStep(
-        universePiClosure of (U := U2)
+      have(piTerm ∈ U2) by Tautology.from(
+        universeHierarchyPiClosureLeft
       )
       thenHave(piTerm ∈ (U1 ∪ U2)) by Substitute(unionEq)
     }
@@ -284,18 +281,8 @@ object TypingRules extends lisa.Main {
         Union.commutativity of (x := U1, y := U2),
         equalTransitivityApplication of (x := (U1 ∪ U2), y := (U2 ∪ U1), z := U1)
       )
-      val t1InU1 = have(T1 ∈ U1) by Tautology.from(
-        Subset.membership of (x := U2, y := U1, z := T1)
-      )
-      have(∀(x, (x ∈ T1) ==> (T2(x) ∈ U1))) subproof {
-        have(∀(x, (x ∈ T1) ==> (T2(x) ∈ U2))) by Hypothesis
-        thenHave(x ∈ T1 ==> (T2(x) ∈ U2)) by InstantiateForall(x)
-        thenHave(x ∈ T1 ==> (T2(x) ∈ U1)) by Tautology.fromLastStep(Subset.membership of (x := U2, y := U1, z := T2(x)))
-        thenHave(thesis) by RightForall
-      }
-      thenHave(piTerm ∈ U1) by Tautology.fromLastStep(
-        universePiClosure of (U := U1),
-        t1InU1
+      have(piTerm ∈ U1) by Tautology.from(
+        universeHierarchyPiClosureRight
       )
       thenHave(piTerm ∈ (U1 ∪ U2)) by Substitute(unionEq)
     }
