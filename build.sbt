@@ -30,7 +30,7 @@ val commonSettings3 = commonSettings ++ Seq(
   scalaVersion := scala3,
   scalacOptions ++= Seq(
     "-language:implicitConversions",
-    //"-Wconf:msg=.*will never be selected.*:silent",
+    // "-Wconf:msg=.*will never be selected.*:silent",
     "-Wconf:msg=.*trait or object is defined in the compilation unit.*:silent",
     "-language:experimental.modularity"
   ),
@@ -106,9 +106,9 @@ lazy val examples = Project(
   .settings(commonSettings3)
   .dependsOn(root)
 
-lazy val cic = Project(
-  id = "lisa-cic",
-  base = file("lisa-cic")
+lazy val coc = Project(
+  id = "lisa-coc",
+  base = file("lisa-coc")
 )
   .settings(commonSettings)
   .settings(commonSettings3)
