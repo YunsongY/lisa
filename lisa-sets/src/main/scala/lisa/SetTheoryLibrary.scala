@@ -1,7 +1,7 @@
 package lisa
 
-import lisa.utils.fol.FOL.{_, given}
 import lisa.kernel.proof.RunningTheory
+import lisa.utils.fol.FOL.{_, given}
 import lisa.utils.prooflib.Library
 
 import scala.annotation.targetName
@@ -192,11 +192,11 @@ object SetTheoryLibrary extends lisa.utils.prooflib.Library {
   def ∀(e: Variable[Ind] | Expr[Prop], φ: Expr[Prop]): Expr[Prop] =
     e match {
       // Unbounded quantifier
-      case x: Variable[Ind] => forall(x, φ)
+      case (x: Variable[Ind] @unchecked) if x.sort == K.Ind => forall(x, φ)
 
       // Bounded quantifiers
-      case (x: Variable[Ind]) ∈ s => forall(x, x ∈ s ==> φ)
-      case (x: Variable[Ind]) ⊆ s => forall(x, x ⊆ s ==> φ)
+      case App(App(∈, (x: Variable[Ind])), s) => forall(x, x ∈ s ==> φ)
+      case App(App(⊆, (x: Variable[Ind])), s) => forall(x, x ⊆ s ==> φ)
       case App(p: Expr[Ind >>: Prop], x: Variable[Ind]) => forall(x, p(x) ==> φ)
 
       case _ => throw new IllegalArgumentException("Ill-formed bounded quantifier.")
@@ -208,11 +208,11 @@ object SetTheoryLibrary extends lisa.utils.prooflib.Library {
   def ∃(e: Variable[Ind] | Expr[Prop], φ: Expr[Prop]): Expr[Prop] =
     e match {
       // Unbounded quantifier
-      case x: Variable[Ind] => exists(x, φ)
+      case (x: Variable[Ind] @unchecked) => exists(x, φ)
 
       // Bounded quantifiers
-      case (x: Variable[Ind]) ∈ s => exists(x, x ∈ s /\ φ)
-      case (x: Variable[Ind]) ⊆ s => exists(x, x ⊆ s /\ φ)
+      case App(App(∈, (x: Variable[Ind])), s) => exists(x, x ∈ s /\ φ)
+      case App(App(⊆, (x: Variable[Ind])), s) => exists(x, x ⊆ s /\ φ)
       case App(p: Expr[Ind >>: Prop], x: Variable[Ind]) => exists(x, p(x) /\ φ)
 
       case _ => throw new IllegalArgumentException("Ill-formed bounded quantifier.")
