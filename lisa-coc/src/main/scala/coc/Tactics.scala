@@ -12,7 +12,9 @@ import lisa.maths.SetTheory.Base.Subset.{reflexivity, transitivity, doubleInclus
 import lisa.maths.SetTheory.Base.Union.{commutativity, leftUnionSubset}
 import lisa.maths.SetTheory.Cardinal.Predef.{isUniverse, universeOf, universeOfIsUniverse}
 import Symbols.*
-import Helper.{unionAbsorbVariant, subsetOfUniverse, unionEqual, universeHierarchyPiClosureRight, universeHierarchyPiClosureLeft}
+import Helper.{unionAbsorbVariant, subsetOfUniverse, unionEqual, universeHierarchyPiClosureRight, universeHierarchyPiClosureLeft, piCovariance}
+import lisa.utils.prooflib.BasicStepTactic.RightForall
+import lisa.utils.prooflib.BasicStepTactic.Weakening
 
 object Tactics:
   val x, y, z, A, B, C = variable[Ind]
@@ -54,7 +56,7 @@ object Tactics:
      */
     def inferProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(localContext: Set[Expr[Prop]], tm: Expr[Ind]): proof.ProofTacticJudgement =
       import lib.*
-      println("Infer term:" + tm.toString())
+      // println("Infer term:" + tm.toString())
       TacticSubproof {
         tm match
           // e1: Π(x:T1).T2, e2: T1 => e1(e2): T2(e2)
@@ -113,7 +115,7 @@ object Tactics:
             val (maxU, minU, closureThm) =
               if getDepth(u1) > getDepth(u2) then (u1, u2, universeHierarchyPiClosureRight)
               else (u2, u1, universeHierarchyPiClosureLeft)
-            val subProof = subsetProof(using SetTheoryLibrary)(minU, maxU)
+            val subProof = subsetProof(using SetTheoryLibrary)(localContext, minU, maxU)
             if !subProof.isValid then return proof.InvalidProofTactic(s"SPi: Subset proof failed: $minU <= $maxU")
             val resetBot = h1.bot -<< (boundVar ∈ ty)
             val subRel = have(subProof)
@@ -137,7 +139,7 @@ object Tactics:
      */
     def checkProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(localContext: Set[Expr[Prop]], tm: Expr[Ind], ty: Expr[Ind]): proof.ProofTacticJudgement =
       import lib.*
-      println("Check term's type: " + tm.toString() + " ∈ " + ty.toString())
+      // println("Check term's type: " + tm.toString() + " ∈ " + ty.toString())
       TacticSubproof {
         (tm, ty) match
           // ∀(x ∈ T1, e(x) ∈ T2(x)) => abs(T1)(e) ∈ Pi(T1)(T2)
@@ -168,7 +170,7 @@ object Tactics:
             val inferredType = h1.bot.right.head match
               case typeOf(tm, ty) => ty
               case _ => return proof.InvalidProofTactic(s"Failed to extract the inferred type from valid proof")
-            val convProof = subsetProof(using SetTheoryLibrary)(inferredType, ty)
+            val convProof = subsetProof(using SetTheoryLibrary)(localContext, inferredType, ty)
             if !convProof.isValid then return proof.InvalidProofTactic(s"Failed to construct the equivalence proof for $inferredType and $ty")
             val h2 = have(convProof)
             val statement = (tm ∈ ty) ++<< h1.bot ++<< h2.bot
@@ -184,26 +186,40 @@ object Tactics:
       }
 
     // Construct subset proof(ty1 ⊆ ty2) for the given two expressions
-    def subsetProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(sub: Expr[Ind], sup: Expr[Ind]): proof.ProofTacticJudgement =
-      println("Trying to construct subsetProof for: " + sub.toString() + " ⊆ " + sup.toString())
+    def subsetProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(localContext: Set[Expr[Prop]], sub: Expr[Ind], sup: Expr[Ind]): proof.ProofTacticJudgement =
+      // println("Trying to construct subsetProof for: " + sub.toString() + " ⊆ " + sup.toString())
       TacticSubproof {
-        val dSub = getDepth(sub)
-        val dSup = getDepth(sup)
-        if (dSub > dSup) then proof.InvalidProofTactic(s"Depth mismatch: $sub (d=$dSub) cannot be subset of $sup (d=$dSup)")
-        else if (dSub == dSup) then
-          if (sub == sup) then have(sub ⊆ sup) by Tautology.from(reflexivity of (x := sub))
-          else
-            have(sub === sup) by RightRefl.withParameters(sub === sup)
-            thenHave(sub ⊆ sup) by Tautology.fromLastStep(doubleInclusion of (x := sub, y := sup))
-        else if (dSub == dSup - 1) then have(sub ⊆ universeOf(sub)) by Tautology.from(subsetOfUniverse of (A := sub))
-        else
-          val step1 = have(sub ⊆ universeOf(sub)) by Tautology.from(subsetOfUniverse of (A := sub))
-          val step2Proof = subsetProof(using SetTheoryLibrary)(universeOf(sub), sup)
-          if !step2Proof.isValid then return proof.InvalidProofTactic(s"Further subset proof failed: ${universeOf(sub)} and $sup")
-          val step2 = have(step2Proof)
-          val test = have(sub ⊆ sup) by Tautology.from(
-            step1,
-            step2,
-            transitivity of (x := sub, y := universeOf(sub), z := sup)
-          )
+        (sub, sup) match
+          case (SPi(d1: Expr[Ind], Abs(v1: Expr[Ind], c1: Expr[Ind])), SPi(d2: Expr[Ind], Abs(v2: Expr[Ind], c2: Expr[Ind]))) =>
+            val domainEquiv = have(d1 === d2) by RightRefl.withParameters(d1 === d2)
+            val c2Replace = c2.substitute((v1, v2))
+            val newContext = localContext ++ Set(v1 ∈ d1)
+            val codomainProof = subsetProof(using SetTheoryLibrary)(newContext, c1, c2Replace)
+            if !codomainProof.isValid then return proof.InvalidProofTactic(s"Cannot prove codomain covariance: '${c1} ⊆ ${c2Replace}' for variable ${v1}.")
+            val h1 = have(codomainProof)
+            have(c1 ⊆ c2Replace ++<< h1.bot) by Tautology.from(have(codomainProof))
+            thenHave((v1 ∈ d1 ==> c1 ⊆ c2Replace) ++<< h1.bot) by Weakening
+            thenHave(∀(v1 ∈ d1, c1 ⊆ c2Replace) ++<< h1.bot) by RightForall
+            thenHave(sub ⊆ sup ++<< h1.bot) by Tautology.fromLastStep(domainEquiv, piCovariance of (T := d1, T1 := d2, T2 := Abs(v1, c1), T2p := Abs(v2, c2)))
+          case _ =>
+            val dSub = getDepth(sub)
+            val dSup = getDepth(sup)
+            if (dSub > dSup) then proof.InvalidProofTactic(s"Depth mismatch: $sub (d=$dSub) cannot be subset of $sup (d=$dSup)")
+            else if (dSub == dSup) then
+              if (localContext.contains(sub ⊆ sup)) then have(sub ⊆ sup |- sub ⊆ sup) by Hypothesis
+              else if (sub == sup) then have(sub ⊆ sup) by Tautology.from(reflexivity of (x := sub))
+              else
+                have(sub === sup) by RightRefl.withParameters(sub === sup)
+                thenHave(sub ⊆ sup) by Tautology.fromLastStep(doubleInclusion of (x := sub, y := sup))
+            else if (dSub == dSup - 1) then have(sub ⊆ universeOf(sub)) by Tautology.from(subsetOfUniverse of (A := sub))
+            else
+              val step1 = have(sub ⊆ universeOf(sub)) by Tautology.from(subsetOfUniverse of (A := sub))
+              val step2Proof = subsetProof(using SetTheoryLibrary)(localContext, universeOf(sub), sup)
+              if !step2Proof.isValid then return proof.InvalidProofTactic(s"Further subset proof failed: ${universeOf(sub)} and $sup")
+              val step2 = have(step2Proof)
+              val test = have(sub ⊆ sup) by Tautology.from(
+                step1,
+                step2,
+                transitivity of (x := sub, y := universeOf(sub), z := sup)
+              )
       }

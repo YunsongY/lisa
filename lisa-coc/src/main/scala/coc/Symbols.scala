@@ -21,7 +21,7 @@ object Symbols extends lisa.Main:
   val T, T1 = variable[Ind]
 
   // Dependent type
-  val T2 = variable[Ind >>: Ind]
+  val T2, T2p = variable[Ind >>: Ind]
 
   // Proposition
   val Q, H = variable[Ind >>: Prop]
@@ -42,9 +42,9 @@ object Symbols extends lisa.Main:
    * Universe(Type) level
    */
   val Typ = variable[Ind]
-  def getUniverse(n: Int): Expr[Ind] = {
-    if (n == 1) then Typ
-    else universeOf(getUniverse(n - 1))
+  def getUniverse(n: Int, base: Expr[Ind]): Expr[Ind] = {
+    if (n == 1) then base
+    else universeOf(getUniverse(n - 1, base))
   }
 
   /**

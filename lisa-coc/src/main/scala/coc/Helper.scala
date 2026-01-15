@@ -5,11 +5,28 @@ import lisa.maths.SetTheory.Base.Predef.{*, given}
 import lisa.maths.SetTheory.Cardinal.Predef.{*}
 import lisa.maths.SetTheory.Functions.Predef.*
 import lisa.maths.Quantifiers.*
+import lisa.utils.prooflib.BasicStepTactic.Weakening
+import lisa.utils.prooflib.BasicStepTactic.Weakening
 
 /**
  * This file defines some useful helper theorem used in the typing rules
  */
 object Helper extends lisa.Main:
+  /**
+   * Unfolds the Set Comprehension definition of the Pi type.
+   *
+   * Proves: e1 ∈ {f ∈ S | P(f)} <=> e1 ∈ S ∧ P(e1)
+   */
+  val pi_expansion = Lemma(
+    e1 ∈ {
+      f ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) |
+        (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a)))))
+    } <=> e1 ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) /\
+      (∀(x ∈ T1, ∃!(y, (x, y) ∈ e1))) /\ (∀(a, ∀(b, (a, b) ∈ e1 ==> (b ∈ T2(a)))))
+  ) {
+    have(thesis) by Comprehension.apply
+  }
+
   /**
    * Predicate Logic Lemma: Distributes a universal implication (∀)
    * over an existential conjunction (∃).
@@ -359,4 +376,106 @@ object Helper extends lisa.Main:
     thenHave(thesis) by Tautology.fromLastStep(
       universePiClosure of (U := U1)
     )
+  }
+
+  /**
+   */
+  val piCovariance = Theorem(
+    (T === T1, ∀(x ∈ T, T2(x) ⊆ T2p(x))) |- Π(x :: T, T2(x)) ⊆ Π(x :: T1, T2p(x))
+  ) {
+    assumeAll
+    val equalFormula = have(T === T1) by Hypothesis
+    have(f ∈ Π(x :: T, T2(x)) ==> f ∈ Π(x :: T1, T2p(x))) subproof {
+      assume(f ∈ Π(x :: T, T2(x)))
+      have(f ∈ Π(x :: T, T2(x))) by Hypothesis
+      thenHave(f ∈ Π(x :: T1, T2(x))) by Substitute(equalFormula)
+      thenHave(f ∈ { f ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) | (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a))))) }) by Substitute(Pi.definition)
+      val stmt = thenHave(f ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) /\ (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a)))))) by Tautology.fromLastStep(pi_expansion of (e1 := f))
+
+      have(∀(x ∈ T, T2(x) ⊆ T2p(x))) by Tautology
+      thenHave(x ∈ T ==> T2(x) ⊆ T2p(x)) by InstantiateForall(x)
+      thenHave(x ∈ T1 ==> T2(x) ⊆ T2p(x)) by Substitute(equalFormula)
+      val pred = thenHave(∀(x ∈ T1, T2(x) ⊆ T2p(x))) by RightForall
+
+      // cond1: f ∈ 𝒫(T1 × ⋃({ T2p(a) | a ∈ T1 })
+      have(f ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 }))) by Weakening(stmt)
+      val stmt1 = thenHave(f ⊆ (T1 × ⋃({ T2(a) | a ∈ T1 }))) by Tautology.fromLastStep(powerSetAxiom of (x := f, y := (T1 × ⋃({ T2(a) | a ∈ T1 }))))
+      have(⋃({ T2(a) | a ∈ T1 }) ⊆ ⋃({ T2p(a) | a ∈ T1 })) subproof {
+        have(x ∈ ⋃({ T2(a) | a ∈ T1 }) ==> x ∈ ⋃({ T2p(a) | a ∈ T1 })) subproof {
+          assume(x ∈ ⋃({ T2(a) | a ∈ T1 }))
+          val stmt1 = have(∃(y, y ∈ { T2(a) | a ∈ T1 } /\ x ∈ y)) by Tautology.from(unionAxiom of (z := x, x := { T2(a) | a ∈ T1 }))
+          have((y ∈ { T2(a) | a ∈ T1 }, x ∈ y) |- x ∈ ⋃({ T2p(a) | a ∈ T1 })) subproof {
+            assumeAll
+            val stmt2 = have(∃(a ∈ T1, T2(a) === y)) by Tautology.from(Replacement.membership of (F := λ(x, T2(x)), A := T1))
+            have((a ∈ T1, T2(a) === y) |- x ∈ ⋃({ T2p(a) | a ∈ T1 })) subproof {
+              assumeAll
+              val equalFormula2 = have(T2(a) === y) by Hypothesis
+              have(a ∈ T1 ==> T2(a) ⊆ T2p(a)) by InstantiateForall(a)(pred)
+              thenHave(T2(a) ⊆ T2p(a)) by Tautology.fromLastStep()
+              thenHave(y ⊆ T2p(a)) by Substitute(equalFormula2)
+              val stmt3 = thenHave(x ∈ T2p(a)) by Tautology.fromLastStep(Subset.membership of (x := y, y := T2p(a), z := x))
+              have(T2p(a) === T2p(a)) by Congruence
+              thenHave(a ∈ T1 /\ (T2p(a) === T2p(a))) by Tautology.fromLastStep()
+              thenHave(∃(x ∈ T1, T2p(x) === T2p(a))) by RightExists
+              thenHave(T2p(a) ∈ { T2p(x) | x ∈ T1 } /\ x ∈ T2p(a)) by Tautology.fromLastStep(
+                Replacement.membership of (y := T2p(a), F := λ(x, T2p(x)), A := T1),
+                stmt3
+              )
+              thenHave(∃(z, z ∈ { T2p(x) | x ∈ T1 } /\ x ∈ z)) by RightExists
+              thenHave(thesis) by Tautology.fromLastStep(unionAxiom of (z := x, x := { T2p(x) | x ∈ T1 }))
+            }
+            thenHave(a ∈ T1 /\ (T2(a) === y) |- x ∈ ⋃({ T2p(a) | a ∈ T1 })) by Restate
+            thenHave(∃(a ∈ T1, T2(a) === y) |- x ∈ ⋃({ T2p(a) | a ∈ T1 })) by LeftExists
+            thenHave(thesis) by Tautology.fromLastStep(stmt2)
+          }
+          thenHave(y ∈ { T2(a) | a ∈ T1 } /\ x ∈ y |- x ∈ ⋃({ T2p(a) | a ∈ T1 })) by Restate
+          thenHave(∃(y, y ∈ { T2(a) | a ∈ T1 } /\ x ∈ y) |- x ∈ ⋃({ T2p(a) | a ∈ T1 })) by LeftExists
+          thenHave(thesis) by Tautology.fromLastStep(stmt1)
+        }
+        thenHave(∀(x, x ∈ ⋃({ T2(a) | a ∈ T1 }) ==> x ∈ ⋃({ T2p(a) | a ∈ T1 }))) by RightForall
+        thenHave(thesis) by Tautology.fromLastStep(Subset.definition of (x := ⋃({ T2(a) | a ∈ T1 }), y := ⋃({ T2p(a) | a ∈ T1 }), z := x))
+      }
+      val cond1 = thenHave(f ∈ 𝒫(T1 × ⋃({ T2p(a) | a ∈ T1 }))) by Tautology.fromLastStep(
+        stmt1,
+        Subset.reflexivity of (x := T1),
+        CartesianProduct.monotonic of (A := T1, B := ⋃({ T2(a) | a ∈ T1 }), C := T1, D := ⋃({ T2p(a) | a ∈ T1 })),
+        Subset.transitivity of (x := f, y := (T1 × ⋃({ T2(a) | a ∈ T1 })), z := (T1 × ⋃({ T2p(a) | a ∈ T1 }))),
+        powerSetAxiom of (x := f, y := (T1 × ⋃({ T2p(a) | a ∈ T1 })))
+      )
+
+      // Cond2: ∀(x ∈ T1, ∃!(y, (x, y) ∈ f))
+      val cond2 = have(∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) by Weakening(stmt)
+
+      // Cond3: ∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2p(a)))))
+      val cond3 = have(∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2p(a))))) subproof {
+        have((a, b) ∈ f ==> b ∈ T2p(a)) subproof {
+          assume((a, b) ∈ f)
+          have(∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a))))) by Weakening(stmt)
+          thenHave((a, b) ∈ f ==> b ∈ T2(a)) by InstantiateForall(a, b)
+          val stmt3 = thenHave(b ∈ T2(a)) by Tautology.fromLastStep()
+          have(a ∈ T1 ==> T2(a) ⊆ T2p(a)) by InstantiateForall(a)(pred)
+          thenHave(T2(a) ⊆ T2p(a)) by Tautology.fromLastStep(
+            stmt1,
+            Subset.membership of (x := f, y := (T1 × ⋃({ T2(a) | a ∈ T1 })), z := (a, b)),
+            CartesianProduct.pairMembership of (x := a, y := b, A := T1, B := ⋃({ T2(a) | a ∈ T1 }))
+          )
+          thenHave(thesis) by Tautology.fromLastStep(
+            stmt3,
+            Subset.membership of (x := T2(a), y := T2p(a), z := b)
+          )
+        }
+        thenHave(∀(b, (a, b) ∈ f ==> b ∈ T2p(a))) by RightForall
+        thenHave(thesis) by RightForall
+      }
+
+      have(f ∈ { f ∈ 𝒫(T1 × ⋃({ T2p(a) | a ∈ T1 })) | (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2p(a))))) }) by Tautology.from(
+        cond1,
+        cond2,
+        cond3,
+        pi_expansion of (e1 := f, T2 := T2p)
+      )
+      thenHave(f ∈ Π(x :: T1, T2p(x))) by Substitute(Pi.definition of (T2 := T2p))
+    }
+    thenHave(∀(f ∈ Π(x :: T, T2(x)), f ∈ Π(x :: T1, T2p(x)))) by RightForall
+    thenHave(thesis) by Tautology.fromLastStep(Subset.definition of (x := Π(x :: T, T2(x)), y := Π(x :: T1, T2p(x)), z := f))
   }

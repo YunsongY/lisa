@@ -6,22 +6,7 @@ import lisa.maths.SetTheory.Functions.Predef.{*}
 import lisa.maths.SetTheory.Cardinal.Predef.{*}
 import lisa.maths.Quantifiers.*
 
-object TypingRules extends lisa.Main {
-
-  /**
-   * Unfolds the Set Comprehension definition of the Pi type.
-   *
-   * Proves: e1 ∈ {f ∈ S | P(f)} <=> e1 ∈ S ∧ P(e1)
-   */
-  val pi_expansion = Lemma(
-    e1 ∈ {
-      f ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) |
-        (∀(x ∈ T1, ∃!(y, (x, y) ∈ f))) /\ (∀(a, ∀(b, (a, b) ∈ f ==> (b ∈ T2(a)))))
-    } <=> e1 ∈ 𝒫(T1 × ⋃({ T2(a) | a ∈ T1 })) /\
-      (∀(x ∈ T1, ∃!(y, (x, y) ∈ e1))) /\ (∀(a, ∀(b, (a, b) ∈ e1 ==> (b ∈ T2(a)))))
-  ) {
-    have(thesis) by Comprehension.apply
-  }
+object TypingRules extends lisa.Main:
 
   /**
    * Abs Application Characterization (Full Equivalence)
@@ -314,4 +299,3 @@ object TypingRules extends lisa.Main {
       equalTransitivityApplication of (x := app(abs(T)(e))(e2), y := ε(y, (e2, y) ∈ abs(T)(e)), z := e(e2))
     )
   }
-}

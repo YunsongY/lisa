@@ -9,12 +9,12 @@ import lisa.maths.SetTheory.Cardinal.Predef.{isUniverse}
 import cic.Tactics.Typecheck
 import cic.Tactics.Typecheck
 
-object Examples extends lisa.Main {
+object Examples extends lisa.Main:
   private val Typ = variable[Ind]
-  private val Typ2 = getUniverse(2)
-  private val Typ3 = getUniverse(3)
-  private val Typ4 = getUniverse(4)
-  private val Nat, Bool, String = variable[Ind]
+  private val Typ2 = getUniverse(2, Typ)
+  private val Typ3 = getUniverse(3, Typ)
+  private val Typ4 = getUniverse(4, Typ)
+  private val Nat, Int, Bool, String, Real = variable[Ind]
   private val A, B, C, T = variable[Ind]
   private val f, g, x, y, a, s, t, n, m = variable[Ind]
   private val tru, fls = variable[Ind]
@@ -190,4 +190,49 @@ object Examples extends lisa.Main {
   ) {
     have(thesis) by Typecheck.prove
   }
-}
+
+  ///////////////////////////////////////////////
+  /////////   Semantic Subset Tests    //////////
+  ///////////////////////////////////////////////
+  /**
+   * Test 7: Simple Data Subtyping
+   */
+  val test7_DataSubtyping = Theorem(
+    (n ∈ Nat, Nat ⊆ Int) |- n ∈ Int
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  /**
+   * Test 8: Function Codomain Covariance
+   * Verifies that (A -> Nat) is a subtype of (A -> Int).
+   */
+  val test8_FuncCovariance = Theorem(
+    (f ∈ (A ->: Nat), Nat ⊆ Int) |- f ∈ (A ->: Int)
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  /**
+   * Test 9: Deeply Nested Pi Covariance
+   * Verifies subtyping logic propagates through multiple layers of function bodies.
+   */
+  val DeepTerm = fun(x :: A, fun(y :: B, fun(z :: C, a)))
+  val DeepTargetType = A ->: B ->: C ->: Real
+  val test9_DeepNested = Theorem(
+    (a ∈ Nat, Nat ⊆ Real) |- DeepTerm ∈ DeepTargetType
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  /**
+   * Test 10: Polymorphic Instantiation & Subtyping
+   * Verifies that the result of a polymorphic application (Nat) satisfies the supertype Int.
+   */
+  val poly_f = fun(A :: Typ, fun(x :: A, fun(y :: A, y)))
+  val PolyTerm = app(app(app(poly_f)(Nat))(n))(n)
+  val test10_PolymorphicContravariance = Theorem(
+    (isUniverse(Typ), n ∈ Nat, Nat ∈ Typ, Nat ⊆ Int) |- PolyTerm ∈ Int
+  ) {
+    have(thesis) by Typecheck.prove
+  }
