@@ -56,7 +56,7 @@ object Tactics:
      */
     def inferProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(localContext: Set[Expr[Prop]], tm: Expr[Ind]): proof.ProofTacticJudgement =
       import lib.*
-      // println("Infer term:" + tm.toString())
+      println("Infer term:" + tm.toString())
       TacticSubproof {
         tm match
           // e1: Π(x:T1).T2, e2: T1 => e1(e2): T2(e2)
@@ -139,7 +139,7 @@ object Tactics:
      */
     def checkProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(localContext: Set[Expr[Prop]], tm: Expr[Ind], ty: Expr[Ind]): proof.ProofTacticJudgement =
       import lib.*
-      // println("Check term's type: " + tm.toString() + " ∈ " + ty.toString())
+      println("Check term's type: " + tm.toString() + " ∈ " + ty.toString())
       TacticSubproof {
         (tm, ty) match
           // ∀(x ∈ T1, e(x) ∈ T2(x)) => abs(T1)(e) ∈ Pi(T1)(T2)
@@ -187,7 +187,7 @@ object Tactics:
 
     // Construct subset proof(ty1 ⊆ ty2) for the given two expressions
     def subsetProof(using lib: SetTheoryLibrary.type, proof: lib.Proof)(localContext: Set[Expr[Prop]], sub: Expr[Ind], sup: Expr[Ind]): proof.ProofTacticJudgement =
-      // println("Trying to construct subsetProof for: " + sub.toString() + " ⊆ " + sup.toString())
+      println("Trying to construct subsetProof for: " + sub.toString() + " ⊆ " + sup.toString())
       TacticSubproof {
         (sub, sup) match
           case (SPi(d1: Expr[Ind], Abs(v1: Expr[Ind], c1: Expr[Ind])), SPi(d2: Expr[Ind], Abs(v2: Expr[Ind], c2: Expr[Ind]))) =>

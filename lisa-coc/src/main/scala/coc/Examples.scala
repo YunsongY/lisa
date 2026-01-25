@@ -14,6 +14,7 @@ object Examples extends lisa.Main:
   private val Typ2 = getUniverse(2, Typ)
   private val Typ3 = getUniverse(3, Typ)
   private val Typ4 = getUniverse(4, Typ)
+  private val Typ5 = getUniverse(5, Typ)
   private val Nat, Int, Bool, String, Real = variable[Ind]
   private val A, B, C, T = variable[Ind]
   private val f, g, x, y, a, s, t, n, m = variable[Ind]
@@ -233,6 +234,39 @@ object Examples extends lisa.Main:
   val PolyTerm = app(app(app(poly_f)(Nat))(n))(n)
   val test10_PolymorphicContravariance = Theorem(
     (isUniverse(Typ), n ∈ Nat, Nat ∈ Typ, Nat ⊆ Int) |- PolyTerm ∈ Int
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  ///////////////////////////////////////////////
+  ///////// Case Study: Function.left_id ////////
+  ///////////////////////////////////////////////
+
+  // Lean: id : Π(A:Type). A → A
+  val Id = fun(X :: Typ5, fun(x :: X, x))
+  val IdType = Π(X :: Typ5, X ->: X)
+
+  // Lean: comp : Π(A B C). (B → C) → (A → B) → A → C
+  val Comp =
+    fun(A :: Typ5, fun(B :: Typ5, fun(C :: Typ5, fun(g :: (B ->: C), fun(f :: (A ->: B), fun(a :: A, app(g)(app(f)(a))))))))
+
+  val CompType =
+    Π(A :: Typ5, Π(B :: Typ5, Π(C :: Typ5, (B ->: C) ->: (A ->: B) ->: A ->: C)))
+
+  // Sanity checks
+  val test_Id = Theorem(Id ∈ IdType) {
+    have(thesis) by Typecheck.prove
+  }
+
+  val test_Comp = Theorem(
+    isUniverse(Typ) |- Comp ∈ CompType
+  ) {
+    have(thesis) by Typecheck.prove
+  }
+
+  val test_id_comp = Theorem(
+    (isUniverse(Typ), A ∈ Typ, B ∈ Typ3, f ∈ (A ->: B)) |-
+      app(app(app(app(app(Comp)(A))(B))(B))(app(Id)(B)))(f) ∈ (A ->: B)
   ) {
     have(thesis) by Typecheck.prove
   }
