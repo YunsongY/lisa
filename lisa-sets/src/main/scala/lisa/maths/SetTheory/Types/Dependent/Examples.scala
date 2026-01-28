@@ -1,13 +1,12 @@
-package cic
+package lisa.maths.SetTheory.Types.Dependent
 
 import Symbols.*
 import Tactics.*
 import TypingRules.*
+
 import lisa.maths.SetTheory.Base.Predef.{*, given}
-import lisa.maths.SetTheory.Functions.Predef.{*}
+import lisa.maths.SetTheory.Functions.Predef.{*, given}
 import lisa.maths.SetTheory.Cardinal.Predef.{isUniverse}
-import cic.Tactics.Typecheck
-import cic.Tactics.Typecheck
 
 object Examples extends lisa.Main:
   private val Typ = variable[Ind]
@@ -25,7 +24,7 @@ object Examples extends lisa.Main:
   ////////////////////////////////
 
   // Identity function
-  val test0_identity = Theorem(a ∈ Nat |- app(fun(x :: Nat, x))(a) ∈ Nat) {
+  val test0_identity = Theorem(a ∈ Nat |- fun(x :: Nat, x)(a) ∈ Nat) {
     have(thesis) by Typecheck.prove
   }
   // Curried function
@@ -33,23 +32,23 @@ object Examples extends lisa.Main:
     have(thesis) by Typecheck.prove
   }
   // Composition function
-  val test2_composition = Theorem((f ∈ (A ->: B), g ∈ (B ->: C), a ∈ A) |- app(g)(app(f)(a)) ∈ C) {
+  val test2_composition = Theorem((f ∈ (A ->: B), g ∈ (B ->: C), a ∈ A) |- g(f(a)) ∈ C) {
     have(thesis) by Typecheck.prove
   }
   // Dependent function
-  val test3_dependent = Theorem(Nat ∈ Typ |- app(fun(x :: Typ, fun(y :: x, y)))(Nat) ∈ Π(y :: Nat, Nat)) {
+  val test3_dependent = Theorem(Nat ∈ Typ |- fun(x :: Typ, fun(y :: x, y))(Nat) ∈ Π(y :: Nat, Nat)) {
     have(thesis) by Typecheck.prove
   }
   // Nested Polymorphic Projection
   val test4_nested_polymorphic_projection = Theorem(
     (a ∈ Nat, b ∈ Nat, Nat ∈ Typ) |-
-      app(app(app(fun(T :: Typ, fun(x :: T, fun(y :: T, x))))(Nat))(a))(b) ∈ Nat
+      fun(T :: Typ, fun(x :: T, fun(y :: T, x)))(Nat, a, b) ∈ Nat
   ) {
     have(thesis) by Typecheck.prove
   }
 
   // Nested Polymorphic function
-  val doublePolyTerm = fun(A :: Typ, fun(B :: Typ, fun(f :: (A ->: B), fun(a :: A, app(f)(a)))))
+  val doublePolyTerm = fun(A :: Typ, fun(B :: Typ, fun(f :: (A ->: B), fun(a :: A, f(a)))))
   val doublePolyType = Π(A :: Typ, Π(B :: Typ, Π(f :: A ->: B, Π(a :: A, B))))
   val test5_doublePoly = Theorem(
     doublePolyTerm ∈ doublePolyType
@@ -58,7 +57,7 @@ object Examples extends lisa.Main:
   }
   val test5_doublePolyApp = Theorem(
     (Nat ∈ Typ, Bool ∈ Typ, n ∈ Nat, tru ∈ Bool) |-
-      app(app(app(app(doublePolyTerm)(Nat))(Bool))(fun(x :: Nat, tru)))(n) ∈ Bool
+      doublePolyTerm(Nat, Bool, fun(x :: Nat, tru), n) ∈ Bool
   ) {
     have(thesis) by Typecheck.prove
   }
@@ -70,7 +69,7 @@ object Examples extends lisa.Main:
   /**
    * Test1: S.K.I combinator
    */
-  val STerm = fun(f :: (A ->: A ->: A), fun(g :: (A ->: A), fun(x :: A, app(app(f)(x))(app(g)(x)))))
+  val STerm = fun(f :: (A ->: A ->: A), fun(g :: (A ->: A), fun(x :: A, f(x)(g(x)))))
   val SType = (A ->: A ->: A) ->: (A ->: A) ->: A ->: A
   val KTerm = fun(x :: A, fun(y :: A, x))
   val KType = A ->: A ->: A
@@ -85,7 +84,7 @@ object Examples extends lisa.Main:
   val testI = Theorem(ITerm ∈ IType) {
     have(thesis) by Typecheck.prove
   }
-  val test_SKI = Theorem(a ∈ A |- app(app(app(STerm)(KTerm))(ITerm))(a) ∈ A) {
+  val test_SKI = Theorem(a ∈ A |- STerm(KTerm, ITerm, a) ∈ A) {
     have(thesis) by Typecheck.prove
   }
 
@@ -110,11 +109,11 @@ object Examples extends lisa.Main:
 
   // NOT = λb: Bool. λA: Typ. λx: A. λy: A. b A y x
   // This tests passing a "Function" (b) as an argument and applying it
-  val CNot = fun(b :: CBool, fun(A :: Typ, fun(x :: A, fun(y :: A, app(app(app(b)(A))(y))(x)))))
+  val CNot = fun(b :: CBool, fun(A :: Typ, fun(x :: A, fun(y :: A, b(A, y, x)))))
 
   // Verify NOT True == False (Type level check)
   val test_ChurchLogic = Theorem(
-    isUniverse(Typ) |- app(CNot)(CTrue) ∈ CBool
+    isUniverse(Typ) |- CNot(CTrue) ∈ CBool
   ) {
     have(thesis) by Typecheck.prove
   }
@@ -124,23 +123,23 @@ object Examples extends lisa.Main:
    */
   val CNat = Π(A :: Typ, (A ->: A) ->: A ->: A)
   val zero = fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, x)))
-  val succ = fun(n :: CNat, fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, app(f)(app(app(app(n)(A))(f))(x))))))
+  val succ = fun(n :: CNat, fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, f(n(A, f, x))))))
 
   val test_Zero = Theorem(isUniverse(Typ) |- zero ∈ CNat) {
     have(thesis) by Typecheck.prove
   }
 
   // 1 = succ(0)
-  val one = app(succ)(zero)
+  val one = succ(zero)
   val test_One = Theorem(isUniverse(Typ) |- one ∈ CNat) {
     have(thesis) by Typecheck.prove
   }
 
   // Church Addition: λn. λm. λA. λf. λx. n A f (m A f x)
-  val plus = fun(n :: CNat, fun(m :: CNat, fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, app(app(app(n)(A))(f))(app(app(app(m)(A))(f))(x)))))))
+  val plus = fun(n :: CNat, fun(m :: CNat, fun(A :: Typ, fun(f :: (A ->: A), fun(x :: A, n(A, f, m(A, f, x)))))))
 
   // 1 + 0 = 1
-  val test_Add = Theorem(isUniverse(Typ) |- app(app(plus)(one))(zero) ∈ CNat) {
+  val test_Add = Theorem(isUniverse(Typ) |- plus(one, zero) ∈ CNat) {
     have(thesis) by Typecheck.prove
   }
 
@@ -157,10 +156,10 @@ object Examples extends lisa.Main:
   val testPoly = Theorem(PolyId_1 ∈ PolyIdType_1) {
     have(thesis) by Typecheck.prove
   }
-  val testPolyPrime = Theorem(isUniverse(Typ) |- app(PolyId_1)(PolyIdType_0) ∈ Π(x :: PolyIdType_0, PolyIdType_0)) {
+  val testPolyPrime = Theorem(isUniverse(Typ) |- PolyId_1(PolyIdType_0) ∈ Π(x :: PolyIdType_0, PolyIdType_0)) {
     have(thesis) by Typecheck.prove
   }
-  val test_SelfApp = Theorem(isUniverse(Typ) |- app(app(PolyId_1)(PolyIdType_0))(PolyId_0) ∈ PolyIdType_0) {
+  val test_SelfApp = Theorem(isUniverse(Typ) |- PolyId_1(PolyIdType_0, PolyId_0) ∈ PolyIdType_0) {
     have(thesis) by Typecheck.prove
   }
 
@@ -171,7 +170,7 @@ object Examples extends lisa.Main:
   val SuperId = fun(X :: Typ2, fun(x :: X, x))
   val test_Grandfather = Theorem(
     (isUniverse(Typ), Nat ∈ Typ, z ∈ Nat) |-
-      app(app(SuperId)(Nat))(z) ∈ Nat
+      SuperId(Nat, z) ∈ Nat
   ) {
     have(thesis) by Typecheck.prove
   }
@@ -231,7 +230,7 @@ object Examples extends lisa.Main:
    * Verifies that the result of a polymorphic application (Nat) satisfies the supertype Int.
    */
   val poly_f = fun(A :: Typ, fun(x :: A, fun(y :: A, y)))
-  val PolyTerm = app(app(app(poly_f)(Nat))(n))(n)
+  val PolyTerm = poly_f(Nat, n, n)
   val test10_PolymorphicContravariance = Theorem(
     (isUniverse(Typ), n ∈ Nat, Nat ∈ Typ, Nat ⊆ Int) |- PolyTerm ∈ Int
   ) {
@@ -248,7 +247,7 @@ object Examples extends lisa.Main:
 
   // Lean: comp : Π(A B C). (B → C) → (A → B) → A → C
   val Comp =
-    fun(A :: Typ5, fun(B :: Typ5, fun(C :: Typ5, fun(g :: (B ->: C), fun(f :: (A ->: B), fun(a :: A, app(g)(app(f)(a))))))))
+    fun(A :: Typ5, fun(B :: Typ5, fun(C :: Typ5, fun(g :: (B ->: C), fun(f :: (A ->: B), fun(a :: A, g(f(a))))))))
 
   val CompType =
     Π(A :: Typ5, Π(B :: Typ5, Π(C :: Typ5, (B ->: C) ->: (A ->: B) ->: A ->: C)))
@@ -266,7 +265,7 @@ object Examples extends lisa.Main:
 
   val test_id_comp = Theorem(
     (isUniverse(Typ), A ∈ Typ, B ∈ Typ3, f ∈ (A ->: B)) |-
-      app(app(app(app(app(Comp)(A))(B))(B))(app(Id)(B)))(f) ∈ (A ->: B)
+      Comp(A, B, B, Id(B), f) ∈ (A ->: B)
   ) {
     have(thesis) by Typecheck.prove
   }
